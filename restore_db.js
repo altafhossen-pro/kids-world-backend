@@ -30,13 +30,25 @@ const restoreDb = async () => {
                 // Clear existing data before restore
                 await collection.deleteMany({});
                 
-                // Convert string _id back to ObjectId
-                const docs = data.map(doc => {
-                    if (doc._id) doc._id = new mongoose.Types.ObjectId(doc._id);
-                    if (doc.category) doc.category = new mongoose.Types.ObjectId(doc.category);
-                    if (doc.product) doc.product = new mongoose.Types.ObjectId(doc.product);
-                    return doc;
-                });
+                // Recursive function to deeply convert 24-char hex strings to ObjectId
+                const convertObjectIds = (obj) => {
+                    if (obj === null || typeof obj !== 'object') {
+                        if (typeof obj === 'string' && /^[0-9a-fA-F]{24}$/.test(obj)) {
+                            return new mongoose.Types.ObjectId(obj);
+                        }
+                        return obj;
+                    }
+                    if (Array.isArray(obj)) {
+                        return obj.map(item => convertObjectIds(item));
+                    }
+                    const newObj = {};
+                    for (const key in obj) {
+                        newObj[key] = convertObjectIds(obj[key]);
+                    }
+                    return newObj;
+                };
+
+                const docs = data.map(doc => convertObjectIds(doc));
 
                 await collection.insertMany(docs);
                 console.log(`Restored ${docs.length} documents to ${collectionName}`);
