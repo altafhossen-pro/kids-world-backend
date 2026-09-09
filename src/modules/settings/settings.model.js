@@ -1,0 +1,323 @@
+const mongoose = require('mongoose');
+
+const settingsSchema = new mongoose.Schema({
+  // Loyalty Points Settings - All loyalty related settings in one object
+  loyaltySettings: {
+    coinPerItem: {
+      type: Number,
+      default: 1,
+      min: 0,
+      max: 100
+    },
+    coinValue: {
+      type: Number,
+      default: 1, // 1 coin = 1 ৳
+      min: 0.1,
+      max: 100
+    },
+    isLoyaltyEnabled: {
+      type: Boolean,
+      default: true
+    },
+
+    // Coin Earning Rules
+    earnOnDelivery: {
+      type: Boolean,
+      default: true // Earn coins when order is delivered (COD)
+    },
+    earnOnPaymentSuccess: {
+      type: Boolean,
+      default: true // Earn coins when payment is successful
+    },
+
+    // Minimum Settings (no maximum limit - user can pay entire order)
+    minRedeemAmount: {
+      type: Number,
+      default: 1 // Minimum ৳1 to redeem
+    },
+
+    // Signup bonus coins
+    signupBonusCoins: {
+      type: Number,
+      default: 0, // Coins given to new users on signup
+      min: 0
+    }
+  },
+
+  // Delivery Charge Settings
+  deliveryChargeSettings: {
+    outsideDhaka: {
+      type: Number,
+      default: 150,
+      min: 0
+    },
+    insideDhaka: {
+      type: Number,
+      default: 80,
+      min: 0
+    },
+    subDhaka: {
+      type: Number,
+      default: 120,
+      min: 0
+    },
+    shippingFreeRequiredAmount: {
+      type: Number,
+      default: 1500,
+      min: 0
+    }
+  },
+
+  // General Settings
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+
+  // Email & SMS Settings
+  isSendGuestOrderEmail: {
+    type: Boolean,
+    default: true
+  },
+  isSendGuestOrderSMS: {
+    type: Boolean,
+    default: true
+  },
+  isSendUserOrderEmail: {
+    type: Boolean,
+    default: true
+  },
+  isSendUserOrderSMS: {
+    type: Boolean,
+    default: true
+  },
+  isSendManualOrderEmail: {
+    type: Boolean,
+    default: true
+  },
+  isSendManualOrderSMS: {
+    type: Boolean,
+    default: true
+  },
+  isSendOrderStatusConfirmedEmail: {
+    type: Boolean,
+    default: true
+  },
+  isSendOrderStatusConfirmedSMS: {
+    type: Boolean,
+    default: true
+  },
+
+  // Affiliate Settings
+  affiliateSettings: {
+    // Discount for purchaser (who uses affiliate link)
+    purchaserDiscountType: {
+      type: String,
+      enum: ['percentage', 'fixed'],
+      default: 'percentage'
+    },
+    purchaserDiscountValue: {
+      type: Number,
+      default: 5, // 5% or 5 ৳
+      min: 0
+    },
+    // Loyalty points for referrer (affiliate owner) per purchase
+    referrerLoyaltyPointsPerPurchase: {
+      type: Number,
+      default: 10,
+      min: 0
+    },
+    // Loyalty points for purchaser (if logged in user) per purchase
+    purchaserLoyaltyPointsPerPurchase: {
+      type: Number,
+      default: 5,
+      min: 0
+    },
+    // Is affiliate system enabled
+    isAffiliateEnabled: {
+      type: Boolean,
+      default: true
+    },
+    // Show confirmation modal when affiliate link is used
+    isConfirmationModalShowWhenUseAffiliateLink: {
+      type: Boolean,
+      default: true
+    }
+  },
+
+  // Steadfast Courier Settings
+  steadfastSettings: {
+    apiKey: {
+      type: String,
+      default: ''
+    },
+    apiSecret: {
+      type: String,
+      default: ''
+    },
+    webhookToken: {
+      type: String,
+      default: ''
+    }
+  },
+
+  // Telegram Settings
+  telegramSettings: {
+    botToken: {
+      type: String,
+      default: ''
+    },
+    chatId: {
+      type: String,
+      default: ''
+    },
+    enableSuccessMsgOnSteadfastCallback: {
+      type: Boolean,
+      default: false
+    },
+    enableDebugLogOnSteadfastCallback: {
+      type: Boolean,
+      default: false
+    },
+    notifyNewOrderExistingUser: {
+      type: Boolean,
+      default: false
+    },
+    notifyNewOrderGuestUser: {
+      type: Boolean,
+      default: false
+    },
+    notifyNewUserSignup: {
+      type: Boolean,
+      default: false
+    },
+    notifyPasswordChange: {
+      type: Boolean,
+      default: false
+    }
+  },
+
+  // Admin who last updated
+  updatedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  
+  // Site Settings (General Configuration)
+  siteSettings: {
+    logoUrl: { type: String, default: '' },
+    ogImage: { type: String, default: '' },
+    isVideoAutoplayEnabled: { type: Boolean, default: true },
+    videoMenu: {
+      isEnabled: { type: Boolean, default: false },
+      name: { type: String, default: 'Videos' },
+      url: { type: String, default: '/videos' },
+      backgroundColor: { type: String, default: '#FF0000' },
+      textColor: { type: String, default: '#FFFFFF' },
+      tailwindClasses: { type: String, default: '' }
+    },
+    topHeroBanner: {
+      type: { type: String, enum: ['single', 'slider', 'image'], default: 'single' },
+      image: { type: String, default: '' },
+      link: { type: String, default: '' },
+      slides: [{
+        image: { type: String, default: '' },
+        link: { type: String, default: '' }
+      }],
+      isActive: { type: Boolean, default: true }
+    },
+    heroOffers: {
+      isActive: { type: Boolean, default: true },
+      gridColumns: { type: Number, default: 3 },
+      offers: [{
+        image: { type: String, default: '' },
+        link: { type: String, default: '' }
+      }]
+    },
+    storeFeatures: {
+      backgroundColor: { type: String, default: '#FF1493' },
+      textColor: { type: String, default: '#FFFFFF' },
+      iconColor: { type: String, default: '#FFFFFF' },
+      features: [{
+        icon: { type: String, default: 'Star' },
+        title: { type: String, default: '' },
+        subtitle: { type: String, default: '' }
+      }],
+      lowStockThreshold: { type: Number, default: 10 }
+    },
+    globalProductSubtitle: {
+      text: { type: String, default: '' },
+      isEnabled: { type: Boolean, default: false }
+    },
+    trendingSortOrder: { type: String, enum: ['latest', 'random'], default: 'latest' },
+    bestsellerSortOrder: { type: String, enum: ['latest', 'random'], default: 'latest' }
+  },
+
+  // Homepage Layout Settings
+  homepageLayout: {
+    trending: {
+      isVisible: { type: Boolean, default: true },
+      sortOrder: { type: String, enum: ['latest', 'random'], default: 'latest' },
+      displayType: { type: String, enum: ['grid', 'slider'], default: 'grid' },
+      maxProducts: { type: Number, default: 10 },
+      hasPagination: { type: Boolean, default: false },
+      productsPerPage: { type: Number, default: 10 },
+      maxPages: { type: Number, default: 3 }
+    },
+    bestSellers: {
+      isVisible: { type: Boolean, default: true },
+      sortOrder: { type: String, enum: ['latest', 'random'], default: 'latest' },
+      displayType: { type: String, enum: ['grid', 'slider'], default: 'grid' },
+      maxProducts: { type: Number, default: 10 },
+      hasPagination: { type: Boolean, default: false },
+      productsPerPage: { type: Number, default: 10 },
+      maxPages: { type: Number, default: 3 }
+    },
+    newArrivals: {
+      isVisible: { type: Boolean, default: true },
+      sortOrder: { type: String, enum: ['latest', 'random'], default: 'latest' },
+      displayType: { type: String, enum: ['grid', 'slider'], default: 'grid' },
+      maxProducts: { type: Number, default: 10 },
+      hasPagination: { type: Boolean, default: false },
+      productsPerPage: { type: Number, default: 10 },
+      maxPages: { type: Number, default: 3 }
+    },
+    justForYou: {
+      isVisible: { type: Boolean, default: true },
+      sortOrder: { type: String, enum: ['latest', 'random'], default: 'latest' },
+      maxProducts: { type: Number, default: 50 } // Total max limit for infinite scroll
+    },
+    dynamicCategories: [{
+      categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Category' },
+      isVisible: { type: Boolean, default: true },
+      displayType: { type: String, enum: ['grid', 'slider'], default: 'grid' },
+      sortOrder: { type: String, enum: ['latest', 'random'], default: 'latest' },
+      maxProducts: { type: Number, default: 10 },
+      hasPagination: { type: Boolean, default: false },
+      productsPerPage: { type: Number, default: 10 },
+      maxPages: { type: Number, default: 3 }
+    }]
+  },
+
+  // Order Source Colors for Dashboard Table Highlight
+  orderSourceColors: {
+    website: { type: String, default: '' },
+    facebook: { type: String, default: '' },
+    whatsapp: { type: String, default: '' },
+    phone: { type: String, default: '' },
+    email: { type: String, default: '' },
+    'walk-in': { type: String, default: '' },
+    instagram: { type: String, default: '' },
+    manual: { type: String, default: '' },
+    other: { type: String, default: '' }
+  }
+}, {
+  timestamps: true,
+});
+
+// Ensure only one settings document exists
+settingsSchema.index({}, { unique: true });
+
+const Settings = mongoose.model('Settings', settingsSchema);
+
+module.exports = Settings;

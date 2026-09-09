@@ -1,0 +1,1518 @@
+const { Product } = require('./product.model');
+const { Category } = require('../category/category.model');
+const Settings = require('../settings/settings.model');
+const { StockTracking } = require('../inventory/stockTracking.model');
+const sendResponse = require('../../utils/sendResponse');
+const mongoose = require('mongoose');
+
+// Helper function to sanitize slug (remove leading/trailing hyphens)
+const sanitizeSlug = (slug) => {
+  if (!slug || typeof slug !== 'string') return slug;
+  return slug.replace(/^-+|-+$/g, ''); // Remove leading and trailing hyphens
+};
+
+// Helper for pagination and filtering
+const getPaginatedProducts = async (filter, req, res, message) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 12;
+    const skip = (page - 1) * limit;
+    const sort = req.query.sort ? `${req.query.sort} _id` : 'sortOrder -createdAt _id';
+
+    // Additional filters from query
+    const queryFilter = { 
+      isActive: true,
+      status: 'published',
+      ...filter 
+    };
+    
+    if (req.query.category) {
+      const categoryIds = req.query.category.split(',').map(id => id.trim());
+      
+      try {
+        const { Category } = require('../category/category.model');
+        const childCategories = await Category.find({
+          parent: { $in: categoryIds }
+        }).select('_id');
+        
+        const allCategoryIds = [
+          ...categoryIds,
+          ...childCategories.map(child => child._id.toString())
+        ];
+        
+        queryFilter.category = { $in: allCategoryIds };
+      } catch (err) {
+        // Fallback if category model query fails
+        queryFilter.category = { $in: categoryIds };
+      }
+    }
+    
+    if (req.query.brand) queryFilter.brand = req.query.brand;
+    if (req.query.minPrice) queryFilter['priceRange.min'] = { $gte: Number(req.query.minPrice) };
+    if (req.query.maxPrice) queryFilter['priceRange.max'] = { $lte: Number(req.query.maxPrice) };
+    if (req.query.isActive !== undefined) queryFilter.isActive = req.query.isActive === 'true';
+    if (req.query.status) queryFilter.status = req.query.status;
+    
+    // Add search functionality
+    if (req.query.search) {
+      const searchQuery = req.query.search;
+      queryFilter.$or = [
+        { title: { $regex: searchQuery, $options: 'i' } },
+        { shortDescription: { $regex: searchQuery, $options: 'i' } },
+        { description: { $regex: searchQuery, $options: 'i' } },
+        { tags: { $in: [new RegExp(searchQuery, 'i')] } },
+        { brand: { $regex: searchQuery, $options: 'i' } },
+        { 'variants.sku': { $regex: searchQuery, $options: 'i' } }
+      ];
+    }
+
+    let products;
+    let total;
+
+    if (req.query.isRandom === 'true') {
+      // Exclude already loaded products
+      if (req.query.excludeIds) {
+        const excludeArray = req.query.excludeIds.split(',').filter(id => mongoose.Types.ObjectId.isValid(id)).map(id => new mongoose.Types.ObjectId(id));
+        if (excludeArray.length > 0) {
+          queryFilter._id = { $nin: excludeArray };
+        }
+      }
+
+      // MongoDB aggregation for random products (Highly optimized for 10k+ products)
+      const pipeline = [
+        { $match: queryFilter },
+        { $sample: { size: limit } }
+      ];
+      
+      const randomProducts = await Product.aggregate(pipeline);
+      // We need to populate category manually since it's an aggregation
+      products = await Product.populate(randomProducts, { path: 'category' });
+      
+      // OPTIMIZATION: Skip expensive countDocuments on large collections for random feeds.
+      // If we got 'limit' items, assume there's at least one more page.
+      const hasMore = products.length === limit;
+      
+      return sendResponse({
+        res,
+        statusCode: 200,
+        success: true,
+        message,
+        data: products,
+        pagination: {
+          total: hasMore ? skip + limit + 1 : skip + products.length,
+          page,
+          limit,
+          totalPages: hasMore ? page + 1 : page,
+        },
+      });
+    } else {
+      total = await Product.countDocuments(queryFilter);
+      products = await Product.find(queryFilter)
+        .populate('category')
+        .sort(sort)
+        .skip(skip)
+        .limit(limit);
+    }
+
+    return sendResponse({
+      res,
+      statusCode: 200,
+      success: true,
+      message,
+      data: products,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    return sendResponse({
+      res,
+      statusCode: 500,
+      success: false,
+      message: error.message || 'Server error',
+    });
+  }
+};
+
+exports.createProduct = async (req, res) => {
+  try {
+    // Custom Validation
+    const { title, category, slug, variants } = req.body;
+    const errors = [];
+    if (!title) errors.push("Title is required");
+    if (!category) errors.push("Category is required");
+    if (!slug) errors.push("Slug is required");
+    
+    if (variants && Array.isArray(variants)) {
+      variants.forEach((v, idx) => {
+        if (!v.sku) errors.push(`SKU is required for variant ${idx + 1}`);
+        if (v.currentPrice === undefined || v.currentPrice === null || v.currentPrice === '') {
+          errors.push(`Current price is required for variant ${idx + 1}`);
+        }
+      });
+    }
+
+    if (errors.length > 0) {
+      return sendResponse({
+        res,
+        statusCode: 400,
+        success: false,
+        message: errors.join(', '),
+      });
+    }
+
+    // Sanitize slug to remove leading/trailing hyphens
+    if (req.body.slug) {
+      req.body.slug = sanitizeSlug(req.body.slug);
+    }
+    
+    // Handle empty category field - convert empty string to null to prevent CastError
+    if (req.body.category === '') {
+      req.body.category = null;
+    }
+    
+    if (req.body.subCategories === '') {
+      req.body.subCategories = [];
+    } else if (Array.isArray(req.body.subCategories)) {
+      req.body.subCategories = req.body.subCategories.filter(sub => sub !== '');
+    }
+    
+    const product = new Product(req.body);
+    await product.save();
+
+    // Create stock tracking records
+    if (product.variants && product.variants.length > 0) {
+      // If product has variants, track each variant separately
+      for (const variant of product.variants) {
+        if (variant.stockQuantity && variant.stockQuantity > 0) {
+          const variantStockTracking = new StockTracking({
+            product: product._id,
+            variant: {
+              sku: variant.sku,
+              attributes: variant.attributes
+            },
+            type: 'add',
+            quantity: variant.stockQuantity,
+            previousStock: 0,
+            newStock: variant.stockQuantity,
+            reason: 'Initial variant stock on product creation',
+            performedBy: req.user?.id || req.user?._id,
+            notes: `Stock added for variant ${variant.sku} during product creation`
+          });
+          await variantStockTracking.save();
+        }
+      }
+    } else if (product.totalStock && product.totalStock > 0) {
+      // If product has no variants, track main product stock
+      const stockTracking = new StockTracking({
+        product: product._id,
+        type: 'add',
+        quantity: product.totalStock,
+        previousStock: 0,
+        newStock: product.totalStock,
+        reason: 'Initial stock on product creation',
+        performedBy: req.user?.id || req.user?._id,
+        notes: 'Stock added during product creation'
+      });
+      await stockTracking.save();
+    }
+
+    return sendResponse({
+      res,
+      statusCode: 201,
+      success: true,
+      message: 'Product created successfully',
+      data: product,
+    });
+  } catch (error) {
+    let statusCode = 500;
+    let message = 'Server error';
+
+    // Handle specific MongoDB errors
+    if (error.code === 11000) {
+      statusCode = 400;
+      
+      // Check if it's a duplicate SKU error
+      if (error.keyPattern && error.keyPattern['variants.sku']) {
+        const duplicateSku = error.keyValue['variants.sku'];
+        message = `Product variant with SKU "${duplicateSku}" already exists. Please use a different SKU.`;
+      }
+      // Check if it's a duplicate slug error
+      else if (error.keyPattern && error.keyPattern.slug) {
+        const duplicateSlug = error.keyValue.slug;
+        message = `Product with slug "${duplicateSlug}" already exists. Please use a different slug.`;
+      }
+      // Check if it's a duplicate title error
+      else if (error.keyPattern && error.keyPattern.title) {
+        const duplicateTitle = error.keyValue.title;
+        message = `Product with title "${duplicateTitle}" already exists. Please use a different title.`;
+      }
+      // Generic duplicate key error
+      else {
+        message = 'A product with this information already exists. Please check for duplicates.';
+      }
+    }
+    // Handle validation errors
+    else if (error.name === 'ValidationError') {
+      statusCode = 400;
+      const validationErrors = Object.values(error.errors).map(err => err.message);
+      message = `Validation failed: ${validationErrors.join(', ')}`;
+    }
+    // Handle other specific errors
+    else if (error.name === 'CastError') {
+      statusCode = 400;
+      message = 'Invalid data format provided.';
+    }
+    // Default error handling
+    else {
+      message = error.message || 'Failed to create product. Please try again.';
+    }
+
+    return sendResponse({
+      res,
+      statusCode,
+      success: false,
+      message,
+    });
+  }
+};
+
+exports.getProducts = async (req, res) => {
+  return getPaginatedProducts({}, req, res, 'Products fetched successfully');
+};
+
+// Public: Get all active product slugs for sitemap generation (Lean Query)
+exports.getProductSlugsForSitemap = async (req, res) => {
+  try {
+    const products = await Product.find({ isActive: true, status: 'published' })
+      .select('slug updatedAt -_id')
+      .lean();
+
+    return sendResponse({
+      res,
+      statusCode: 200,
+      success: true,
+      message: 'Product slugs fetched successfully for sitemap',
+      data: products,
+    });
+  } catch (error) {
+    return sendResponse({
+      res,
+      statusCode: 500,
+      success: false,
+      message: error.message || 'Server error',
+    });
+  }
+};
+
+// Admin: Get all products with search, filter, and pagination
+exports.getAdminProducts = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const skip = (page - 1) * limit;
+    const sort = req.query.sort || 'sortOrder -createdAt';
+    const searchQuery = req.query.search || '';
+    const statusFilter = req.query.status || req.query.filterStatus; // Support both 'status' and 'filterStatus'
+
+    // Build base filter (admin sees all products, including inactive)
+    const queryFilter = {};
+
+    const filterType = req.query.filterType;
+    if (filterType) {
+      if (filterType === 'trending') queryFilter.isTrending = true;
+      if (filterType === 'bestselling') queryFilter.isBestselling = true;
+      if (filterType === 'featured') queryFilter.isFeatured = true;
+      if (filterType === 'new_arrival') queryFilter.isNewArrival = true;
+    }
+
+    // Status filter (if not 'all')
+    if (statusFilter && statusFilter !== 'all') {
+      if (statusFilter === 'low_stock') {
+        const settings = await Settings.findOne();
+        const lowStockThreshold = settings?.siteSettings?.lowStockThreshold ?? 10;
+        queryFilter.$or = [
+          { totalStock: { $lte: lowStockThreshold } },
+          { 'variants.stockQuantity': { $lte: lowStockThreshold } }
+        ];
+      } else {
+        queryFilter.status = statusFilter;
+      }
+    }
+
+    // Search functionality - includes SKU, title, slug, brand
+    if (searchQuery) {
+      queryFilter.$or = [
+        { title: { $regex: searchQuery, $options: 'i' } },
+        { slug: { $regex: searchQuery, $options: 'i' } },
+        { shortDescription: { $regex: searchQuery, $options: 'i' } },
+        { description: { $regex: searchQuery, $options: 'i' } },
+        { tags: { $in: [new RegExp(searchQuery, 'i')] } },
+        { brand: { $regex: searchQuery, $options: 'i' } },
+        { 'variants.sku': { $regex: searchQuery, $options: 'i' } }
+      ];
+    }
+
+    if (req.query.category) {
+      const categoryIds = req.query.category.split(',').map(id => id.trim());
+      
+      // Get all child categories for the selected parent categories
+      const { Category } = require('../category/category.model');
+      const childCategories = await Category.find({
+        parent: { $in: categoryIds }
+      }).select('_id');
+      
+      // Combine parent and child category IDs
+      const allCategoryIds = [
+        ...categoryIds,
+        ...childCategories.map(child => child._id.toString())
+      ];
+      
+      queryFilter.category = { $in: allCategoryIds };
+    }
+
+    const total = await Product.countDocuments(queryFilter);
+    const products = await Product.find(queryFilter)
+      .populate('category')
+      .sort(sort)
+      .skip(skip)
+      .limit(limit);
+
+    let processedProducts = products;
+    if (statusFilter === 'low_stock') {
+        const settings = await Settings.findOne();
+        const lowStockThreshold = settings?.siteSettings?.lowStockThreshold ?? 10;
+        
+        processedProducts = products.map(doc => {
+            const product = doc.toObject({ virtuals: true });
+            if (product.variants && product.variants.length > 0) {
+                product.variants = product.variants.filter(v => v.stockQuantity <= lowStockThreshold);
+            }
+            return product;
+        });
+    }
+
+    return sendResponse({
+      res,
+      statusCode: 200,
+      success: true,
+      message: 'Admin products fetched successfully',
+      data: processedProducts,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    return sendResponse({
+      res,
+      statusCode: 500,
+      success: false,
+      message: error.message || 'Server error',
+    });
+  }
+};
+
+exports.getFeaturedProducts = async (req, res) => {
+  return getPaginatedProducts({ isFeatured: true }, req, res, 'Featured products fetched successfully');
+};
+
+exports.getDiscountedProducts = async (req, res) => {
+  return getPaginatedProducts({ 'variants.salePrice': { $gt: 0 } }, req, res, 'Discounted products fetched successfully');
+};
+
+exports.getNewArrivals = async (req, res) => {
+  return getPaginatedProducts({ isNewArrival: true }, req, res, 'New arrivals fetched successfully');
+};
+
+exports.getBestsellingProducts = async (req, res) => {
+  try {
+    const Settings = require('../settings/settings.model');
+    const settings = await Settings.findOne();
+    const sortOrder = settings?.homepageLayout?.bestSellers?.sortOrder || 'latest';
+    const maxProducts = settings?.homepageLayout?.bestSellers?.maxProducts || 10;
+
+    if (!req.query.limit) {
+      req.query.limit = maxProducts;
+    }
+
+    if (sortOrder === 'random') {
+      req.query.isRandom = 'true';
+    } else {
+      req.query.sort = '-createdAt';
+    }
+
+    return getPaginatedProducts({ isBestselling: true }, req, res, 'Bestselling products fetched successfully');
+  } catch (error) {
+    return sendResponse({
+      res,
+      statusCode: 500,
+      success: false,
+      message: error.message || 'Server error',
+    });
+  }
+};
+
+exports.getTrendingProducts = async (req, res) => {
+  try {
+    const Settings = require('../settings/settings.model');
+    const settings = await Settings.findOne();
+    const sortOrder = settings?.homepageLayout?.trending?.sortOrder || 'latest';
+    const maxProducts = settings?.homepageLayout?.trending?.maxProducts || 10;
+
+    if (!req.query.limit) {
+      req.query.limit = maxProducts;
+    }
+
+    if (sortOrder === 'random') {
+      req.query.isRandom = 'true';
+    } else {
+      req.query.sort = '-createdAt';
+    }
+
+    return getPaginatedProducts({ isTrending: true }, req, res, 'Trending products fetched successfully');
+  } catch (error) {
+    return sendResponse({
+      res,
+      statusCode: 500,
+      success: false,
+      message: error.message || 'Server error',
+    });
+  }
+};
+
+// Get random products for "Just for you" section
+exports.getRandomProducts = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 5;
+    const excludeIds = req.query.exclude ? req.query.exclude.split(',') : [];
+    
+    // Build match filter
+    const matchFilter = {
+      isActive: true,
+      status: 'published'
+    };
+    
+    // Exclude already loaded product IDs
+    if (excludeIds.length > 0) {
+      matchFilter._id = {
+        $nin: excludeIds.map(id => new mongoose.Types.ObjectId(id))
+      };
+    }
+    
+    // Use aggregation with $sample to get random products
+    const products = await Product.aggregate([
+      {
+        $match: matchFilter
+      },
+      {
+        $sample: { size: limit }
+      },
+      {
+        $lookup: {
+          from: 'categories',
+          localField: 'category',
+          foreignField: '_id',
+          as: 'category'
+        }
+      },
+      {
+        $unwind: {
+          path: '$category',
+          preserveNullAndEmptyArrays: true
+        }
+      }
+    ]);
+
+    return sendResponse({
+      res,
+      statusCode: 200,
+      success: true,
+      message: 'Random products fetched successfully',
+      data: products,
+    });
+  } catch (error) {
+    return sendResponse({
+      res,
+      statusCode: 500,
+      success: false,
+      message: error.message || 'Server error',
+    });
+  }
+};
+
+// Get products with videos (only products that have at least 1 video)
+exports.getProductVideos = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 12;
+    const skip = (page - 1) * limit;
+
+    const pipeline = [
+      {
+        $match: {
+          productVideos: { $exists: true, $ne: [], $type: 'array' },
+          isActive: true,
+          status: 'published'
+        }
+      },
+      {
+        $unwind: "$productVideos"
+      },
+      {
+        $match: {
+          productVideos: { 
+            $ne: null, 
+            $ne: "", 
+            $regex: /youtube\.com|youtu\.be/i 
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          title: 1,
+          slug: 1,
+          featuredImage: 1,
+          videoUrl: "$productVideos"
+        }
+      },
+      {
+        $sort: { createdAt: -1, _id: -1 }
+      }
+    ];
+
+    const totalPipeline = [...pipeline, { $count: "total" }];
+    const totalResult = await Product.aggregate(totalPipeline);
+    const total = totalResult.length > 0 ? totalResult[0].total : 0;
+
+    const paginatedPipeline = [
+      ...pipeline,
+      { $skip: skip },
+      { $limit: limit }
+    ];
+
+    const videos = await Product.aggregate(paginatedPipeline);
+
+    return sendResponse({
+      res,
+      statusCode: 200,
+      success: true,
+      message: 'Product videos fetched successfully',
+      data: videos,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    return sendResponse({
+      res,
+      statusCode: 500,
+      success: false,
+      message: error.message || 'Server error',
+    });
+  }
+};
+
+// Get available filters based on categories
+exports.getAvailableFilters = async (req, res) => {
+  try {
+    const categoryIds = req.query.category ? req.query.category.split(',').map(id => id.trim()) : [];
+
+    let queryFilter = { isActive: true, status: 'published' };
+
+    // If categories are selected, filter by those categories including child categories
+    if (categoryIds.length > 0) {
+      // Get all child categories for the selected parent categories
+      const { Category } = require('../category/category.model');
+      const childCategories = await Category.find({
+        parent: { $in: categoryIds }
+      }).select('_id');
+      
+      // Combine parent and child category IDs
+      const allCategoryIds = [
+        ...categoryIds,
+        ...childCategories.map(child => child._id.toString())
+      ];
+      
+      queryFilter.category = { $in: allCategoryIds };
+    }
+
+
+    // Get all products matching the filter
+    const products = await Product.find(queryFilter).select('isBracelet isRing braceletSizes ringSizes');
+
+
+    // Count products with bracelet and ring types
+    let hasBracelets = 0;
+    let hasRings = 0;
+    const braceletSizes = new Set();
+    const ringSizes = new Set();
+
+    products.forEach(product => {
+      // Check if product is bracelet type
+      if (product.isBracelet === true) {
+        hasBracelets++;
+        // Add bracelet sizes if they exist
+        if (product.braceletSizes && Array.isArray(product.braceletSizes)) {
+          product.braceletSizes.forEach(size => {
+            if (size && size.trim()) {
+              braceletSizes.add(size.trim());
+            }
+          });
+        }
+      }
+
+      // Check if product is ring type
+      if (product.isRing === true) {
+        hasRings++;
+        // Add ring sizes if they exist
+        if (product.ringSizes && Array.isArray(product.ringSizes)) {
+          product.ringSizes.forEach(size => {
+            if (size && size.trim()) {
+              ringSizes.add(size.trim());
+            }
+          });
+        }
+      }
+    });
+
+    // Convert to arrays and sort
+    const uniqueBraceletSizes = Array.from(braceletSizes).sort();
+    const uniqueRingSizes = Array.from(ringSizes).sort();
+
+    // Calculate filter visibility
+    const showBraceletFilter = hasBracelets > 0;
+    const showRingFilter = hasRings > 0;
+
+
+    return sendResponse({
+      res,
+      statusCode: 200,
+      success: true,
+      message: 'Available filters fetched successfully',
+      data: {
+        braceletSizes: uniqueBraceletSizes,
+        ringSizes: uniqueRingSizes,
+        showBraceletFilter: showBraceletFilter,
+        showRingFilter: showRingFilter
+      }
+    });
+
+  } catch (error) {
+    return sendResponse({
+      res,
+      statusCode: 500,
+      success: false,
+      message: error.message || 'Error fetching available filters',
+    });
+  }
+};
+
+exports.searchProducts = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 12;
+    const skip = (page - 1) * limit;
+    const sort = req.query.sort || 'sortOrder -createdAt';
+    const searchQuery = req.query.search || req.query.query || '';
+
+    // Validate pagination parameters
+    if (page < 1 || limit < 1 || limit > 100) {
+      return sendResponse({
+        res,
+        statusCode: 400,
+        success: false,
+        message: 'Invalid pagination parameters',
+      });
+    }
+
+    // Build search filter
+    let queryFilter = { isActive: true, status: 'published' };
+
+    // Text search across multiple fields
+    if (searchQuery) {
+      queryFilter.$or = [
+        { title: { $regex: searchQuery, $options: 'i' } },
+        { shortDescription: { $regex: searchQuery, $options: 'i' } },
+        { description: { $regex: searchQuery, $options: 'i' } },
+        { tags: { $in: [new RegExp(searchQuery, 'i')] } },
+        { brand: { $regex: searchQuery, $options: 'i' } },
+        { 'variants.sku': { $regex: searchQuery, $options: 'i' } }
+      ];
+    }
+
+    // Additional filters
+    if (req.query.category) {
+      const categoryIds = req.query.category.split(',').map(id => id.trim());
+      
+      // Get all child categories for the selected parent categories
+      const { Category } = require('../category/category.model');
+      const childCategories = await Category.find({
+        parent: { $in: categoryIds }
+      }).select('_id');
+      
+      // Combine parent and child category IDs
+      const allCategoryIds = [
+        ...categoryIds,
+        ...childCategories.map(child => child._id.toString())
+      ];
+      
+      queryFilter.category = { $in: allCategoryIds };
+    }
+
+    if (req.query.brand) queryFilter.brand = req.query.brand;
+
+    // Size filters for jewelry
+    if (req.query.braceletSize) {
+      const sizes = req.query.braceletSize.split(',').map(size => size.trim());
+      queryFilter.braceletSizes = { $in: sizes };
+    }
+
+    if (req.query.ringSize) {
+      const sizes = req.query.ringSize.split(',').map(size => size.trim());
+      queryFilter.ringSizes = { $in: sizes };
+    }
+
+    // Price filtering based on variants
+    if (req.query.minPrice || req.query.maxPrice) {
+      const minPrice = req.query.minPrice ? parseFloat(req.query.minPrice) : null;
+      const maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice) : null;
+
+      // Validate price values
+      if (minPrice !== null && (isNaN(minPrice) || minPrice < 0)) {
+        return sendResponse({
+          res,
+          statusCode: 400,
+          success: false,
+          message: 'Invalid minimum price value',
+        });
+      }
+
+      if (maxPrice !== null && (isNaN(maxPrice) || maxPrice < 0)) {
+        return sendResponse({
+          res,
+          statusCode: 400,
+          success: false,
+          message: 'Invalid maximum price value',
+        });
+      }
+
+      if (minPrice !== null && maxPrice !== null && minPrice > maxPrice) {
+        return sendResponse({
+          res,
+          statusCode: 200,
+          success: true,
+          message: 'Minimum price cannot be greater than maximum price',
+        });
+      }
+
+      // Price filtering will be handled in the aggregation pipeline
+    }
+
+    let products, total;
+
+    // Use aggregation pipeline only when price filtering is needed
+    if (req.query.minPrice || req.query.maxPrice) {
+      try {
+        let pipeline = [];
+
+        // Match stage for basic filters
+        pipeline.push({ $match: queryFilter });
+
+        // Filter by variant prices
+        const minPrice = req.query.minPrice ? parseFloat(req.query.minPrice) : null;
+        const maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice) : null;
+
+        if (minPrice !== null || maxPrice !== null) {
+          pipeline.push({
+            $match: {
+              $or: [
+                // Products with variants in price range
+                {
+                  variants: {
+                    $elemMatch: {
+                      currentPrice: {
+                        ...(minPrice !== null && { $gte: minPrice }),
+                        ...(maxPrice !== null && { $lte: maxPrice })
+                      }
+                    }
+                  }
+                },
+                // Products without variants (fallback)
+                { variants: { $size: 0 } }
+              ]
+            }
+          });
+        }
+
+        // Add category population
+        pipeline.push({
+          $lookup: {
+            from: 'categories',
+            localField: 'category',
+            foreignField: '_id',
+            as: 'category'
+          }
+        });
+
+        // Unwind category array
+        pipeline.push({
+          $unwind: {
+            path: '$category',
+            preserveNullAndEmptyArrays: true
+          }
+        });
+
+        // Sort
+        pipeline.push({ $sort: { [sort.replace('-', '')]: sort.startsWith('-') ? -1 : 1 } });
+
+        // Count total before pagination
+        const countPipeline = [...pipeline, { $count: 'total' }];
+        const totalResult = await Product.aggregate(countPipeline);
+        total = totalResult.length > 0 ? totalResult[0].total : 0;
+
+        // Add pagination
+        pipeline.push({ $skip: skip });
+        pipeline.push({ $limit: limit });
+
+        products = await Product.aggregate(pipeline);
+      } catch (aggregationError) {
+        // Fallback to simple search if aggregation fails
+        total = await Product.countDocuments(queryFilter);
+        products = await Product.find(queryFilter)
+          .populate('category')
+          .sort(sort)
+          .skip(skip)
+          .limit(limit);
+      }
+    } else {
+      // Use simple find for non-price filtered searches
+      total = await Product.countDocuments(queryFilter);
+      products = await Product.find(queryFilter)
+        .populate('category')
+        .sort(sort)
+        .skip(skip)
+        .limit(limit);
+    }
+
+    return sendResponse({
+      res,
+      statusCode: 200,
+      success: true,
+      message: 'Search results fetched successfully',
+      data: products,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    return sendResponse({
+      res,
+      statusCode: 500,
+      success: false,
+      message: error.message || 'Server error',
+    });
+  }
+};
+
+exports.getProductBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    const product = await Product.findOne({ slug })
+      .populate('category')
+      .populate('subCategories');
+
+    
+
+    if (!product) {
+      return sendResponse({
+        res,
+        statusCode: 404,
+        success: false,
+        message: 'Product not found',
+      });
+    }
+    return sendResponse({
+      res,
+      statusCode: 200,
+      success: true,
+      message: 'Product fetched successfully',
+      data: product,
+    });
+  } catch (error) {
+    return sendResponse({
+      res,
+      statusCode: 500,
+      success: false,
+      message: error.message || 'Server error',
+    });
+  }
+};
+
+exports.getProductById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const product = await Product.findById(id)
+      .populate('category')
+      .populate('subCategories');
+    
+    if (!product) {
+      return sendResponse({
+        res,
+        statusCode: 404,
+        success: false,
+        message: 'Product not found',
+      });
+    }
+    return sendResponse({
+      res,
+      statusCode: 200,
+      success: true,
+      message: 'Product fetched successfully',
+      data: product,
+    });
+  } catch (error) {
+    return sendResponse({
+      res,
+      statusCode: 500,
+      success: false,
+      message: error.message || 'Server error',
+    });
+  }
+};
+
+// Admin: Get single product by ID (with all details, no filtering by active status)
+exports.getAdminProductById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const product = await Product.findById(id)
+      .populate('category')
+      .populate('subCategories');
+    
+    if (!product) {
+      return sendResponse({
+        res,
+        statusCode: 404,
+        success: false,
+        message: 'Product not found',
+      });
+    }
+    
+    return sendResponse({
+      res,
+      statusCode: 200,
+      success: true,
+      message: 'Admin product fetched successfully',
+      data: product,
+    });
+  } catch (error) {
+    return sendResponse({
+      res,
+      statusCode: 500,
+      success: false,
+      message: error.message || 'Server error',
+    });
+  }
+};
+
+exports.updateProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+    
+    // Sanitize slug to remove leading/trailing hyphens
+    if (updates.slug) {
+      updates.slug = sanitizeSlug(updates.slug);
+    }
+    
+    // Handle empty category field - convert empty string to null to prevent CastError
+    if (updates.category === '') {
+      updates.category = null;
+    }
+    
+    if (updates.subCategories === '') {
+      updates.subCategories = [];
+    } else if (Array.isArray(updates.subCategories)) {
+      updates.subCategories = updates.subCategories.filter(sub => sub !== '');
+    }
+    
+    // Get the original product to compare stock changes
+    const originalProduct = await Product.findById(id);
+    if (!originalProduct) {
+      return sendResponse({
+        res,
+        statusCode: 404,
+        success: false,
+        message: 'Product not found',
+      });
+    }
+
+    // Update the product
+    const product = await Product.findByIdAndUpdate(id, updates, { new: true });
+    
+    // Check for stock changes and create tracking records
+    const stockTrackingRecords = [];
+    
+    // Check main product stock changes
+    if (updates.totalStock !== undefined && updates.totalStock !== originalProduct.totalStock) {
+      const previousStock = originalProduct.totalStock || 0;
+      const newStock = updates.totalStock;
+      const quantity = Math.abs(newStock - previousStock);
+      const type = newStock > previousStock ? 'add' : 'remove';
+      
+      const stockTracking = new StockTracking({
+        product: id,
+        variant: null,
+        type: type,
+        quantity: quantity,
+        previousStock: previousStock,
+        newStock: newStock,
+        reason: 'Product Information Updated',
+        reference: 'Product Edit',
+        performedBy: req.user?._id || null,
+        cost: null,
+        notes: `Main product stock changed from ${previousStock} to ${newStock} units`
+      });
+      
+      stockTrackingRecords.push(stockTracking);
+    }
+    
+    // Check variant stock changes
+    if (updates.variants && Array.isArray(updates.variants)) {
+      for (const updatedVariant of updates.variants) {
+        if (updatedVariant.sku) {
+          const originalVariant = originalProduct.variants.find(v => v.sku === updatedVariant.sku);
+          
+          if (originalVariant && updatedVariant.stockQuantity !== undefined) {
+            const previousStock = originalVariant.stockQuantity || 0;
+            const newStock = updatedVariant.stockQuantity;
+            
+            if (previousStock !== newStock) {
+              const quantity = Math.abs(newStock - previousStock);
+              const type = newStock > previousStock ? 'add' : 'remove';
+              
+              const stockTracking = new StockTracking({
+                product: id,
+                variant: {
+                  sku: updatedVariant.sku,
+                  attributes: updatedVariant.attributes || originalVariant.attributes
+                },
+                type: type,
+                quantity: quantity,
+                previousStock: previousStock,
+                newStock: newStock,
+                reason: 'Product Variant Updated',
+                reference: 'Product Edit',
+                performedBy: req.user?.id || null,
+                cost: null,
+                notes: `Variant stock changed from ${previousStock} to ${newStock} units`
+              });
+              
+              stockTrackingRecords.push(stockTracking);
+            }
+          }
+        }
+      }
+    }
+    
+    // Save all stock tracking records
+    if (stockTrackingRecords.length > 0) {
+      await StockTracking.insertMany(stockTrackingRecords);
+    }
+    
+    return sendResponse({
+      res,
+      statusCode: 200,
+      success: true,
+      message: 'Product updated successfully',
+      data: {
+        product,
+        stockTrackingRecords: stockTrackingRecords.length
+      },
+    });
+  } catch (error) {
+    return sendResponse({
+      res,
+      statusCode: 500,
+      success: false,
+      message: error.message || 'Server error',
+    });
+  }
+};
+
+exports.deleteProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const product = await Product.findByIdAndDelete(id);
+    if (!product) {
+      return sendResponse({
+        res,
+        statusCode: 404,
+        success: false,
+        message: 'Product not found',
+      });
+    }
+    return sendResponse({
+      res,
+      statusCode: 200,
+      success: true,
+      message: 'Product deleted successfully',
+    });
+  } catch (error) {
+    return sendResponse({
+      res,
+      statusCode: 500,
+      success: false,
+      message: error.message || 'Server error',
+    });
+  }
+};
+
+// Check stock availability for cart items
+exports.checkStockAvailability = async (req, res) => {
+  try {
+    const { cartItems } = req.body;
+
+    if (!cartItems || !Array.isArray(cartItems)) {
+      return sendResponse({
+        res,
+        statusCode: 400,
+        success: false,
+        message: 'Cart items array is required',
+      });
+    }
+
+    const stockCheckResults = [];
+
+    for (const cartItem of cartItems) {
+      try {
+        const product = await Product.findById(cartItem.productId);
+        
+        if (!product) {
+          stockCheckResults.push({
+            cartItemId: cartItem.id,
+            productId: cartItem.productId,
+            isAvailable: false,
+            availableStock: 0,
+            requestedQuantity: cartItem.quantity,
+            reason: 'Product not found'
+          });
+          continue;
+        }
+
+        // Check if product has variants
+        if (product.variants && product.variants.length > 0) {
+          // Find the specific variant
+          const variant = product.variants.find(v => v.sku === cartItem.sku);
+          
+          if (!variant) {
+            stockCheckResults.push({
+              cartItemId: cartItem.id,
+              productId: cartItem.productId,
+              sku: cartItem.sku,
+              isAvailable: false,
+              availableStock: 0,
+              requestedQuantity: cartItem.quantity,
+              reason: 'Variant not found'
+            });
+            continue;
+          }
+
+          const availableStock = variant.stockQuantity || 0;
+          const isAvailable = availableStock >= cartItem.quantity;
+
+          stockCheckResults.push({
+            cartItemId: cartItem.id,
+            productId: cartItem.productId,
+            sku: cartItem.sku,
+            isAvailable,
+            availableStock,
+            requestedQuantity: cartItem.quantity,
+            reason: isAvailable ? 'In stock' : 'Insufficient stock'
+          });
+        } else {
+          // Product without variants - check totalStock
+          const availableStock = product.totalStock || 0;
+          const isAvailable = availableStock >= cartItem.quantity;
+
+          stockCheckResults.push({
+            cartItemId: cartItem.id,
+            productId: cartItem.productId,
+            isAvailable,
+            availableStock,
+            requestedQuantity: cartItem.quantity,
+            reason: isAvailable ? 'In stock' : 'Insufficient stock'
+          });
+        }
+      } catch (itemError) {
+        stockCheckResults.push({
+          cartItemId: cartItem.id,
+          productId: cartItem.productId,
+          isAvailable: false,
+          availableStock: 0,
+          requestedQuantity: cartItem.quantity,
+          reason: 'Error checking stock'
+        });
+      }
+    }
+
+    // Check if any items are out of stock
+    const outOfStockItems = stockCheckResults.filter(item => !item.isAvailable);
+    const allItemsInStock = outOfStockItems.length === 0;
+
+    return sendResponse({
+      res,
+      statusCode: 200,
+      success: true,
+      message: allItemsInStock ? 'All items are in stock' : 'Some items are out of stock',
+      data: {
+        stockCheckResults,
+        allItemsInStock,
+        outOfStockItems,
+        totalItems: cartItems.length,
+        outOfStockCount: outOfStockItems.length
+      }
+    });
+
+  } catch (error) {
+    return sendResponse({
+      res,
+      statusCode: 500,
+      success: false,
+      message: error.message || 'Server error',
+    });
+  }
+};
+
+// Get similar products with smart fallback logic
+exports.getSimilarProducts = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const limit = parseInt(req.query.limit) || 8;
+    const minRequired = parseInt(req.query.minRequired) || 4;
+
+    // First, get the current product to find its category
+    const currentProduct = await Product.findById(productId).populate('category');
+    
+    if (!currentProduct) {
+      return sendResponse({
+        res,
+        statusCode: 404,
+        success: false,
+        message: 'Product not found',
+      });
+    }
+
+    let similarProducts = [];
+    let source = 'category'; // Track where products came from
+
+    // Step 1: Try to get products from the same category first
+    if (currentProduct.category) {
+      const categoryProducts = await Product.find({
+        _id: { $ne: productId }, // Exclude current product
+        category: currentProduct.category._id,
+        isActive: true
+      })
+      .populate('category')
+      .sort({ createdAt: -1 })
+      .limit(limit);
+
+      similarProducts = categoryProducts;
+      
+    }
+
+    // Step 2: If we don't have enough products from same category, fill with products from all categories
+    if (similarProducts.length < minRequired) {
+      const remainingNeeded = limit - similarProducts.length;
+      
+      // Get additional products from all categories, excluding current product and already selected ones
+      const excludeIds = [productId, ...similarProducts.map(p => p._id)];
+      
+      const additionalProducts = await Product.find({
+        _id: { $nin: excludeIds },
+        isActive: true
+      })
+      .populate('category')
+      .sort({ createdAt: -1 })
+      .limit(remainingNeeded);
+
+      similarProducts = [...similarProducts, ...additionalProducts];
+      source = similarProducts.length > minRequired ? 'mixed' : 'all';
+      
+      
+    }
+
+    // Ensure we don't exceed the limit
+    similarProducts = similarProducts.slice(0, limit);
+
+    return sendResponse({
+      res,
+      statusCode: 200,
+      success: true,
+      message: `Similar products fetched successfully (${source} source)`,
+      data: similarProducts,
+      meta: {
+        source,
+        totalFound: similarProducts.length,
+        categoryName: currentProduct.category?.name || 'Unknown',
+        requestedLimit: limit,
+        minRequired
+      }
+    });
+
+  } catch (error) {
+    return sendResponse({
+      res,
+      statusCode: 500,
+      success: false,
+      message: error.message || 'Server error',
+    });
+  }
+};
+
+// Admin: Bulk update category discount exclusion
+exports.bulkExcludeCategoryDiscount = async (req, res) => {
+  try {
+    const { categoryId, excludedProductIds, includedProductIds } = req.body;
+
+    if (!categoryId) {
+      return sendResponse({
+        res,
+        statusCode: 400,
+        success: false,
+        message: 'Category ID is required',
+      });
+    }
+
+    // Update excluded products
+    if (excludedProductIds && excludedProductIds.length > 0) {
+      await Product.updateMany(
+        { _id: { $in: excludedProductIds } },
+        { $set: { excludeFromCategoryDiscount: true } }
+      );
+    }
+
+    // Update included products
+    if (includedProductIds && includedProductIds.length > 0) {
+      await Product.updateMany(
+        { _id: { $in: includedProductIds } },
+        { $set: { excludeFromCategoryDiscount: false } }
+      );
+    }
+
+    return sendResponse({
+      res,
+      statusCode: 200,
+      success: true,
+      message: 'Product exclusions updated successfully',
+    });
+  } catch (error) {
+    return sendResponse({
+      res,
+      statusCode: 500,
+      success: false,
+      message: error.message || 'Server error',
+    });
+  }
+};
+exports.getNextSkuForCategory = async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+
+    if (!categoryId) {
+      return sendResponse({
+        res,
+        statusCode: 400,
+        success: false,
+        message: 'Category ID is required',
+      });
+    }
+
+    const category = await Category.findById(categoryId);
+    if (!category || !category.skuSettings || !category.skuSettings.isActive) {
+      return sendResponse({
+        res,
+        statusCode: 200,
+        success: true,
+        message: 'No active SKU settings for this category',
+        data: null
+      });
+    }
+
+    const { prefix, digitsLength } = category.skuSettings;
+    
+    // Default prefix if not set
+    const searchPrefix = prefix || '';
+
+    // Find all products that match the prefix across all categories
+    const query = {};
+    if (searchPrefix) {
+      // Find products where any variant SKU starts with prefix
+      query['variants.sku'] = { $regex: '^' + searchPrefix, $options: 'i' };
+    }
+
+    // Sort by createdAt descending to find the latest added product, or by sku descending
+    // Sorting by SKU descending works if they have the same length. 
+    // Let's get all matching and find the max numerically.
+    const products = await Product.find(query).select('variants.sku');
+
+    let maxNumber = 0;
+    
+    for (const product of products) {
+      if (product.variants && product.variants.length > 0) {
+        for (const variant of product.variants) {
+          if (variant.sku && variant.sku.toUpperCase().startsWith(searchPrefix.toUpperCase())) {
+            // Remove prefix to get the numeric part
+            const numericPart = variant.sku.substring(searchPrefix.length);
+            const num = parseInt(numericPart, 10);
+            if (!isNaN(num) && num > maxNumber) {
+              maxNumber = num;
+            }
+          }
+        }
+      }
+    }
+
+    // Increment
+    const nextNumber = maxNumber + 1;
+    
+    // Pad with zeros
+    const paddedNumber = String(nextNumber).padStart(digitsLength || 5, '0');
+    const nextSku = searchPrefix + paddedNumber;
+
+    return sendResponse({
+      res,
+      statusCode: 200,
+      success: true,
+      message: 'Next SKU generated successfully',
+      data: {
+        sku: nextSku,
+        previousMax: maxNumber
+      }
+    });
+
+  } catch (error) {
+    console.error('Error getting next SKU:', error);
+    return sendResponse({
+      res,
+      statusCode: 500,
+      success: false,
+      message: 'Failed to generate next SKU',
+      error: error.message
+    });
+  }
+};
+
