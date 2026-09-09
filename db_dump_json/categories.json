@@ -1,0 +1,426 @@
+[
+  {
+    "_id": "6a96b92b8d4b95bfa72400dc",
+    "name": "Educational & Learning Toys",
+    "slug": "educational-learning-toys",
+    "image": "http://localhost:5000/uploads/images/image-1788965327172-632425314.webp",
+    "parent": null,
+    "isActive": true,
+    "isFeatured": true,
+    "bgClass": "",
+    "sortOrder": 0,
+    "showOnHeader": false,
+    "headerSortOrder": 0,
+    "showChildAsSubMenu": false,
+    "banner": {
+      "url": "",
+      "isActive": false
+    },
+    "categoryDiscount": {
+      "percentage": 0,
+      "isActive": false
+    },
+    "skuSettings": {
+      "prefix": "",
+      "digitsLength": 5,
+      "isActive": false
+    },
+    "createdAt": "2026-09-01T11:38:19.128Z",
+    "updatedAt": "2026-09-09T15:03:50.231Z",
+    "__v": 0,
+    "showHomepageAsSection": false,
+    "showHomepageCategory": false
+  },
+  {
+    "_id": "6a96bf1cee0b0c89c8cd459e",
+    "name": "Ride On Cars",
+    "slug": "ride-on-cars-897",
+    "parent": null,
+    "isActive": true,
+    "isFeatured": false,
+    "bgClass": "",
+    "sortOrder": 3,
+    "showOnHeader": false,
+    "headerSortOrder": 0,
+    "showChildAsSubMenu": false,
+    "banner": {
+      "url": "",
+      "isActive": false
+    },
+    "categoryDiscount": {
+      "percentage": 0,
+      "isActive": false
+    },
+    "skuSettings": {
+      "prefix": "",
+      "digitsLength": 5,
+      "isActive": false
+    },
+    "createdAt": "2026-09-01T12:03:40.835Z",
+    "updatedAt": "2026-09-09T15:03:50.231Z",
+    "__v": 0,
+    "showHomepageAsSection": false,
+    "showHomepageCategory": true,
+    "image": "http://localhost:5000/uploads/images/image-1788965357527-578690032.webp"
+  },
+  {
+    "_id": "6a96bf1cee0b0c89c8cd45a1",
+    "name": "Scooters",
+    "slug": "scooters-641",
+    "parent": null,
+    "isActive": true,
+    "isFeatured": false,
+    "bgClass": "",
+    "sortOrder": 4,
+    "showOnHeader": false,
+    "headerSortOrder": 0,
+    "showChildAsSubMenu": false,
+    "banner": {
+      "url": "",
+      "isActive": false
+    },
+    "categoryDiscount": {
+      "percentage": 0,
+      "isActive": false
+    },
+    "skuSettings": {
+      "prefix": "",
+      "digitsLength": 5,
+      "isActive": false
+    },
+    "createdAt": "2026-09-01T12:03:40.842Z",
+    "updatedAt": "2026-09-09T15:03:50.231Z",
+    "__v": 0,
+    "showHomepageAsSection": false,
+    "showHomepageCategory": true
+  },
+  {
+    "_id": "6a96bf1cee0b0c89c8cd45a4",
+    "name": "Bicycles",
+    "slug": "bicycles-73",
+    "parent": null,
+    "isActive": true,
+    "isFeatured": false,
+    "bgClass": "",
+    "sortOrder": 5,
+    "showOnHeader": false,
+    "headerSortOrder": 0,
+    "showChildAsSubMenu": false,
+    "banner": {
+      "url": "",
+      "isActive": false
+    },
+    "categoryDiscount": {
+      "percentage": 0,
+      "isActive": false
+    },
+    "skuSettings": {
+      "prefix": "",
+      "digitsLength": 5,
+      "isActive": false
+    },
+    "createdAt": "2026-09-01T12:03:40.845Z",
+    "updatedAt": "2026-09-09T15:03:50.231Z",
+    "__v": 0,
+    "showHomepageAsSection": false
+  },
+  {
+    "_id": "6a96bf1cee0b0c89c8cd45a7",
+    "name": "Educational Toys",
+    "slug": "educational-toys-740",
+    "parent": null,
+    "isActive": true,
+    "isFeatured": false,
+    "bgClass": "",
+    "sortOrder": 2,
+    "showOnHeader": false,
+    "headerSortOrder": 0,
+    "showChildAsSubMenu": false,
+    "banner": {
+      "url": "",
+      "isActive": false
+    },
+    "categoryDiscount": {
+      "percentage": 0,
+      "isActive": false
+    },
+    "skuSettings": {
+      "prefix": "",
+      "digitsLength": 5,
+      "isActive": false
+    },
+    "createdAt": "2026-09-01T12:03:40.848Z",
+    "updatedAt": "2026-09-09T15:03:50.231Z",
+    "__v": 0,
+    "showHomepageAsSection": true,
+    "image": "http://localhost:5000/uploads/images/image-1788966177994-592229800.jpg",
+    "showHomepageCategory": true
+  },
+  {
+    "_id": "6a96bf1cee0b0c89c8cd45aa",
+    "name": "RC Toys",
+    "slug": "rc-toys-325",
+    "parent": null,
+    "isActive": true,
+    "isFeatured": false,
+    "bgClass": "",
+    "sortOrder": 6,
+    "showOnHeader": false,
+    "headerSortOrder": 0,
+    "showChildAsSubMenu": false,
+    "banner": {
+      "url": "",
+      "isActive": false
+    },
+    "categoryDiscount": {
+      "percentage": 0,
+      "isActive": false
+    },
+    "skuSettings": {
+      "prefix": "",
+      "digitsLength": 5,
+      "isActive": false
+    },
+    "createdAt": "2026-09-01T12:03:40.850Z",
+    "updatedAt": "2026-09-09T15:03:50.231Z",
+    "__v": 0,
+    "image": "http://localhost:5000/uploads/images/image-1788966205309-875349628.webp",
+    "showHomepageAsSection": false,
+    "showHomepageCategory": false
+  },
+  {
+    "_id": "6a96bf1cee0b0c89c8cd45ad",
+    "name": "Electronics",
+    "slug": "electronics-686",
+    "parent": null,
+    "isActive": true,
+    "isFeatured": false,
+    "bgClass": "",
+    "sortOrder": 7,
+    "showOnHeader": false,
+    "headerSortOrder": 0,
+    "showChildAsSubMenu": false,
+    "banner": {
+      "url": "",
+      "isActive": false
+    },
+    "categoryDiscount": {
+      "percentage": 0,
+      "isActive": false
+    },
+    "skuSettings": {
+      "prefix": "",
+      "digitsLength": 5,
+      "isActive": false
+    },
+    "createdAt": "2026-09-01T12:03:40.851Z",
+    "updatedAt": "2026-09-09T15:03:50.231Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a96bf1cee0b0c89c8cd45b0",
+    "name": "Soft Toys",
+    "slug": "soft-toys-97",
+    "parent": null,
+    "isActive": true,
+    "isFeatured": true,
+    "bgClass": "",
+    "sortOrder": 8,
+    "showOnHeader": false,
+    "headerSortOrder": 0,
+    "showChildAsSubMenu": false,
+    "banner": {
+      "url": "",
+      "isActive": false
+    },
+    "categoryDiscount": {
+      "percentage": 0,
+      "isActive": false
+    },
+    "skuSettings": {
+      "prefix": "",
+      "digitsLength": 5,
+      "isActive": false
+    },
+    "createdAt": "2026-09-01T12:03:40.853Z",
+    "updatedAt": "2026-09-09T15:03:50.231Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a96bf1cee0b0c89c8cd45b3",
+    "name": "Baby Care",
+    "slug": "baby-care-691",
+    "parent": null,
+    "isActive": true,
+    "isFeatured": false,
+    "bgClass": "",
+    "sortOrder": 9,
+    "showOnHeader": false,
+    "headerSortOrder": 0,
+    "showChildAsSubMenu": false,
+    "banner": {
+      "url": "",
+      "isActive": false
+    },
+    "categoryDiscount": {
+      "percentage": 0,
+      "isActive": false
+    },
+    "skuSettings": {
+      "prefix": "",
+      "digitsLength": 5,
+      "isActive": false
+    },
+    "createdAt": "2026-09-01T12:03:40.856Z",
+    "updatedAt": "2026-09-09T15:03:50.231Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a96bf1cee0b0c89c8cd45b6",
+    "name": "Play Tents",
+    "slug": "play-tents-721",
+    "parent": null,
+    "isActive": true,
+    "isFeatured": false,
+    "bgClass": "",
+    "sortOrder": 10,
+    "showOnHeader": false,
+    "headerSortOrder": 0,
+    "showChildAsSubMenu": false,
+    "banner": {
+      "url": "",
+      "isActive": false
+    },
+    "categoryDiscount": {
+      "percentage": 0,
+      "isActive": false
+    },
+    "skuSettings": {
+      "prefix": "",
+      "digitsLength": 5,
+      "isActive": false
+    },
+    "createdAt": "2026-09-01T12:03:40.858Z",
+    "updatedAt": "2026-09-09T15:03:50.231Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a96bf1cee0b0c89c8cd45b9",
+    "name": "Pretend Play",
+    "slug": "pretend-play-714",
+    "parent": null,
+    "isActive": true,
+    "isFeatured": false,
+    "bgClass": "",
+    "sortOrder": 11,
+    "showOnHeader": false,
+    "headerSortOrder": 0,
+    "showChildAsSubMenu": false,
+    "banner": {
+      "url": "",
+      "isActive": false
+    },
+    "categoryDiscount": {
+      "percentage": 0,
+      "isActive": false
+    },
+    "skuSettings": {
+      "prefix": "",
+      "digitsLength": 5,
+      "isActive": false
+    },
+    "createdAt": "2026-09-01T12:03:40.860Z",
+    "updatedAt": "2026-09-09T15:03:50.231Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a96bf1cee0b0c89c8cd45bc",
+    "name": "Action Figures",
+    "slug": "action-figures-136",
+    "parent": null,
+    "isActive": true,
+    "isFeatured": true,
+    "bgClass": "",
+    "sortOrder": 1,
+    "showOnHeader": false,
+    "headerSortOrder": 0,
+    "showChildAsSubMenu": false,
+    "banner": {
+      "url": "",
+      "isActive": false
+    },
+    "categoryDiscount": {
+      "percentage": 0,
+      "isActive": false
+    },
+    "skuSettings": {
+      "prefix": "",
+      "digitsLength": 5,
+      "isActive": false
+    },
+    "createdAt": "2026-09-01T12:03:40.862Z",
+    "updatedAt": "2026-09-09T15:03:50.231Z",
+    "__v": 0,
+    "image": "http://localhost:5000/uploads/images/image-1788849319347-945534393.webp",
+    "showHomepageAsSection": false,
+    "showHomepageCategory": true
+  },
+  {
+    "_id": "6a96bf1cee0b0c89c8cd45bf",
+    "name": "Dolls & Playsets",
+    "slug": "dolls-playsets-268",
+    "parent": null,
+    "isActive": true,
+    "isFeatured": false,
+    "bgClass": "",
+    "sortOrder": 12,
+    "showOnHeader": false,
+    "headerSortOrder": 0,
+    "showChildAsSubMenu": false,
+    "banner": {
+      "url": "",
+      "isActive": false
+    },
+    "categoryDiscount": {
+      "percentage": 0,
+      "isActive": false
+    },
+    "skuSettings": {
+      "prefix": "",
+      "digitsLength": 5,
+      "isActive": false
+    },
+    "createdAt": "2026-09-01T12:03:40.863Z",
+    "updatedAt": "2026-09-09T15:03:50.231Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a96bf1cee0b0c89c8cd45c2",
+    "name": "Outdoor Toys",
+    "slug": "outdoor-toys-117",
+    "parent": null,
+    "isActive": true,
+    "isFeatured": false,
+    "bgClass": "",
+    "sortOrder": 13,
+    "showOnHeader": false,
+    "headerSortOrder": 0,
+    "showChildAsSubMenu": false,
+    "banner": {
+      "url": "",
+      "isActive": false
+    },
+    "categoryDiscount": {
+      "percentage": 0,
+      "isActive": false
+    },
+    "skuSettings": {
+      "prefix": "",
+      "digitsLength": 5,
+      "isActive": false
+    },
+    "createdAt": "2026-09-01T12:03:40.865Z",
+    "updatedAt": "2026-09-09T15:03:50.231Z",
+    "__v": 0
+  }
+]

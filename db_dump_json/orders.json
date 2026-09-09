@@ -1,0 +1,408 @@
+[
+  {
+    "_id": "6a9fed2a4c10a82082960b31",
+    "user": "6a8b037965bec7a7e5c6f57a",
+    "items": [
+      {
+        "product": "6a96dff5d7ac8de67911ceed",
+        "variantSku": "KW-493046-0",
+        "name": "Diaper Bag Backpack with Changing Pad",
+        "price": 1699,
+        "quantity": 2,
+        "subtotal": 3398,
+        "variant": {
+          "sku": "KW-493046-0",
+          "stockQuantity": 24,
+          "stockStatus": "in_stock"
+        }
+      }
+    ],
+    "shippingAddress": {
+      "phone": "01340603055",
+      "isDefault": false
+    },
+    "status": "pending",
+    "paymentMethod": "cod",
+    "paymentStatus": "pending",
+    "total": 3478,
+    "discount": 0,
+    "upsellDiscount": 0,
+    "loyaltyDiscount": 0,
+    "loyaltyPointsUsed": 0,
+    "shippingCost": 80,
+    "statusTimestamps": {
+      "pending": "2026-09-08T11:10:34.668Z"
+    },
+    "couponDiscount": 0,
+    "refundedAmount": 0,
+    "isGift": false,
+    "orderType": "auto",
+    "orderSource": "website",
+    "isGuestOrder": false,
+    "ipAddress": "::1",
+    "isDeleted": false,
+    "affiliateOrder": {
+      "affiliateDiscount": 0
+    },
+    "isAddedIntoSteadfast": false,
+    "steadfastCollectedAmount": 0,
+    "isReadByAdmin": false,
+    "tracking": [],
+    "returnQuantities": [],
+    "updateHistory": [],
+    "createdAt": "2026-09-08T11:10:34.742Z",
+    "updatedAt": "2026-09-08T11:10:34.742Z",
+    "orderId": "645412",
+    "__v": 0
+  },
+  {
+    "_id": "6aa01cea7379a2fee541703c",
+    "user": "6a8b037965bec7a7e5c6f57a",
+    "items": [
+      {
+        "product": "6a96dff5d7ac8de67911ceed",
+        "variantSku": "KW-493046-0",
+        "name": "Diaper Bag Backpack with Changing Pad",
+        "price": 1699,
+        "quantity": 2,
+        "subtotal": 3398,
+        "variant": {
+          "sku": "KW-493046-0",
+          "stockQuantity": 24,
+          "stockStatus": "in_stock"
+        }
+      }
+    ],
+    "shippingAddress": {
+      "phone": "01340603050",
+      "isDefault": false
+    },
+    "status": "pending",
+    "paymentMethod": "cod",
+    "paymentStatus": "pending",
+    "total": 3478,
+    "discount": 0,
+    "upsellDiscount": 0,
+    "loyaltyDiscount": 0,
+    "loyaltyPointsUsed": 0,
+    "shippingCost": 80,
+    "statusTimestamps": {
+      "pending": "2026-09-08T14:34:18.035Z"
+    },
+    "couponDiscount": 0,
+    "refundedAmount": 0,
+    "isGift": false,
+    "orderType": "auto",
+    "orderSource": "website",
+    "isGuestOrder": false,
+    "ipAddress": "::1",
+    "isDeleted": false,
+    "affiliateOrder": {
+      "affiliateDiscount": 0
+    },
+    "isAddedIntoSteadfast": false,
+    "steadfastCollectedAmount": 0,
+    "isReadByAdmin": false,
+    "tracking": [],
+    "returnQuantities": [],
+    "updateHistory": [],
+    "createdAt": "2026-09-08T14:34:18.050Z",
+    "updatedAt": "2026-09-08T14:34:18.050Z",
+    "orderId": "670798",
+    "__v": 0
+  },
+  {
+    "_id": "6aa01e0a7379a2fee54170bd",
+    "user": "6a8b037965bec7a7e5c6f57a",
+    "items": [
+      {
+        "product": "6a96dff5d7ac8de67911ceed",
+        "variantSku": "KW-493046-0",
+        "name": "Diaper Bag Backpack with Changing Pad",
+        "price": 1699,
+        "quantity": 1,
+        "subtotal": 1699,
+        "variant": {
+          "sku": "KW-493046-0",
+          "stockQuantity": 24,
+          "stockStatus": "in_stock"
+        }
+      }
+    ],
+    "shippingAddress": {
+      "phone": "01340603050",
+      "isDefault": false,
+      "divisionId": "2",
+      "districtId": "40",
+      "upazilaId": "45"
+    },
+    "status": "pending",
+    "paymentMethod": "cod",
+    "paymentStatus": "pending",
+    "total": 1849,
+    "discount": 0,
+    "upsellDiscount": 0,
+    "loyaltyDiscount": 0,
+    "loyaltyPointsUsed": 0,
+    "shippingCost": 150,
+    "statusTimestamps": {
+      "pending": "2026-09-08T14:39:06.433Z"
+    },
+    "couponDiscount": 0,
+    "refundedAmount": 0,
+    "isGift": false,
+    "orderType": "auto",
+    "orderSource": "website",
+    "isGuestOrder": false,
+    "ipAddress": "::1",
+    "isDeleted": false,
+    "affiliateOrder": {
+      "affiliateDiscount": 0
+    },
+    "isAddedIntoSteadfast": false,
+    "steadfastCollectedAmount": 0,
+    "isReadByAdmin": false,
+    "tracking": [],
+    "returnQuantities": [],
+    "updateHistory": [],
+    "createdAt": "2026-09-08T14:39:06.436Z",
+    "updatedAt": "2026-09-08T14:39:06.436Z",
+    "orderId": "930146",
+    "__v": 0
+  },
+  {
+    "_id": "6aa1787697a4f50419e0f8bf",
+    "user": "6a8b037965bec7a7e5c6f57a",
+    "items": [
+      {
+        "product": "6a96dff5d7ac8de67911ce74",
+        "variantSku": "KW-89980-4",
+        "name": "Wooden Alphabet Puzzle Board",
+        "price": 6500,
+        "quantity": 10,
+        "subtotal": 65000,
+        "variant": {
+          "size": "Standard",
+          "color": "Red",
+          "sku": "KW-89980-4",
+          "stockQuantity": 42
+        }
+      }
+    ],
+    "shippingAddress": {
+      "phone": "01340603050",
+      "isDefault": false,
+      "divisionId": "2",
+      "districtId": "43",
+      "upazilaId": "79"
+    },
+    "status": "returned",
+    "paymentMethod": "cod",
+    "paymentStatus": "paid",
+    "total": 65150,
+    "discount": 0,
+    "upsellDiscount": 0,
+    "loyaltyDiscount": 0,
+    "loyaltyPointsUsed": 0,
+    "shippingCost": 150,
+    "statusTimestamps": {
+      "pending": "2026-09-09T15:26:39.599Z",
+      "confirmed": "2026-09-09T15:20:43.114Z",
+      "processing": "2026-09-09T15:22:05.719Z",
+      "delivered": "2026-09-09T15:28:04.379Z",
+      "returned": "2026-09-09T15:28:43.668Z"
+    },
+    "couponDiscount": 0,
+    "refundedAmount": 0,
+    "isGift": false,
+    "orderType": "auto",
+    "orderSource": "website",
+    "isGuestOrder": false,
+    "ipAddress": "::1",
+    "isDeleted": false,
+    "affiliateOrder": {
+      "affiliateDiscount": 0
+    },
+    "isAddedIntoSteadfast": false,
+    "steadfastCollectedAmount": 0,
+    "isReadByAdmin": true,
+    "tracking": [],
+    "returnQuantities": [
+      {
+        "itemIndex": 0,
+        "quantity": 5,
+        "returnedAt": "2026-09-09T15:28:43.668Z",
+        "_id": "6aa17b2b97a4f50419e0ff9f"
+      }
+    ],
+    "updateHistory": [
+      {
+        "updatedBy": "6a8b037965bec7a7e5c6f57a",
+        "updateType": "item_update",
+        "changes": [
+          {
+            "field": "items[0].quantity",
+            "oldValue": 2,
+            "newValue": 10,
+            "updateType": "item_update",
+            "_id": "6aa17aa397a4f50419e0fc6f"
+          },
+          {
+            "field": "items[0].price",
+            "oldValue": 6720,
+            "newValue": 6500,
+            "updateType": "item_update",
+            "_id": "6aa17aa397a4f50419e0fc70"
+          },
+          {
+            "field": "billingAddress",
+            "updateType": "address_change",
+            "_id": "6aa17aa397a4f50419e0fc71"
+          },
+          {
+            "field": "orderNotes",
+            "newValue": "",
+            "updateType": "notes_update",
+            "_id": "6aa17aa397a4f50419e0fc72"
+          },
+          {
+            "field": "adminNotes",
+            "newValue": "",
+            "updateType": "admin_notes_update",
+            "_id": "6aa17aa397a4f50419e0fc73"
+          },
+          {
+            "field": "total",
+            "oldValue": 13590,
+            "newValue": 65150,
+            "updateType": "price_change",
+            "_id": "6aa17aa397a4f50419e0fc74"
+          }
+        ],
+        "reason": "",
+        "timestamp": "2026-09-09T15:26:27.740Z",
+        "_id": "6aa17aa397a4f50419e0fc6e"
+      },
+      {
+        "updatedBy": "6a8b037965bec7a7e5c6f57a",
+        "updateType": "status_change",
+        "changes": [
+          {
+            "field": "status",
+            "oldValue": "processing",
+            "newValue": "pending",
+            "updateType": "status_change",
+            "_id": "6aa17aaf97a4f50419e0fda7"
+          }
+        ],
+        "reason": "",
+        "timestamp": "2026-09-09T15:26:39.597Z",
+        "_id": "6aa17aaf97a4f50419e0fda6"
+      },
+      {
+        "updatedBy": "6a8b037965bec7a7e5c6f57a",
+        "updateType": "status_change",
+        "changes": [
+          {
+            "field": "status",
+            "oldValue": "pending",
+            "newValue": "delivered",
+            "updateType": "status_change",
+            "_id": "6aa17b0497a4f50419e0ff53"
+          },
+          {
+            "field": "paymentStatus",
+            "oldValue": "pending",
+            "newValue": "paid",
+            "updateType": "payment_change",
+            "_id": "6aa17b0497a4f50419e0ff54"
+          }
+        ],
+        "reason": "",
+        "timestamp": "2026-09-09T15:28:04.376Z",
+        "_id": "6aa17b0497a4f50419e0ff52"
+      }
+    ],
+    "createdAt": "2026-09-09T15:17:10.904Z",
+    "updatedAt": "2026-09-09T15:28:43.669Z",
+    "orderId": "965054",
+    "__v": 0,
+    "adminNotes": "",
+    "billingAddress": {
+      "isDefault": false
+    },
+    "orderNotes": ""
+  },
+  {
+    "_id": "6aa17c1097a4f50419e100aa",
+    "items": [
+      {
+        "product": "6a96dff5d7ac8de67911ce9d",
+        "name": "Plush Teddy Bear Ultra Soft 30cm",
+        "image": "https://kidsworldbd.com/wp-content/uploads/2026/05/1aedb573747db43b65f41125afa862a9.jpg_720x720q80.jpg_-700x700.webp",
+        "price": 3489,
+        "quantity": 10,
+        "subtotal": 34890,
+        "variant": {
+          "size": "Large",
+          "color": "Red",
+          "colorHexCode": "#FF0000",
+          "sku": "KW-862044-0",
+          "stockQuantity": 37,
+          "stockStatus": "in_stock"
+        }
+      }
+    ],
+    "shippingAddress": {
+      "label": "Guest Order",
+      "street": "Fasertek Road, Notun Bazar, Vatara",
+      "city": "",
+      "state": "",
+      "postalCode": "",
+      "country": "Bangladesh",
+      "isDefault": false
+    },
+    "status": "confirmed",
+    "paymentStatus": "pending",
+    "total": 34650,
+    "discount": 390,
+    "upsellDiscount": 0,
+    "loyaltyDiscount": 0,
+    "loyaltyPointsUsed": 0,
+    "shippingCost": 150,
+    "orderNotes": "jhgjh",
+    "statusTimestamps": {
+      "pending": "2026-09-09T15:32:32.868Z",
+      "confirmed": "2026-09-09T15:32:32.868Z"
+    },
+    "couponDiscount": 0,
+    "refundedAmount": 0,
+    "isGift": false,
+    "adminNotes": "Guest Order - Name: Altaf Hossen, Phone: 01340603055, Email: N/A",
+    "orderType": "manual",
+    "orderSource": "facebook",
+    "isGuestOrder": false,
+    "createdBy": "6a8b037965bec7a7e5c6f57a",
+    "ipAddress": "::1",
+    "manualOrderInfo": {
+      "name": "Altaf Hossen",
+      "phone": "01340603055",
+      "address": "Fasertek Road, Notun Bazar, Vatara",
+      "email": ""
+    },
+    "isDeleted": false,
+    "affiliateOrder": {
+      "affiliateDiscount": 0
+    },
+    "isAddedIntoSteadfast": false,
+    "steadfastCollectedAmount": 0,
+    "isReadByAdmin": true,
+    "tracking": [],
+    "returnQuantities": [],
+    "updateHistory": [],
+    "createdAt": "2026-09-09T15:32:32.872Z",
+    "updatedAt": "2026-09-09T15:32:33.268Z",
+    "orderId": "481347",
+    "__v": 0
+  }
+]

@@ -1,0 +1,44 @@
+[
+  {
+    "_id": "6a8b047a20daf56a9809640e",
+    "date": "2026-08-23",
+    "createdAt": "2026-08-23T14:32:25.946Z",
+    "totalVisitors": 1,
+    "updatedAt": "2026-08-23T14:58:51.662Z"
+  },
+  {
+    "_id": "6a8dc0bca7c5b204d3b08ba3",
+    "date": "2026-08-25",
+    "createdAt": "2026-08-25T16:20:12.422Z",
+    "totalVisitors": 2,
+    "updatedAt": "2026-08-25T17:55:02.876Z"
+  },
+  {
+    "_id": "6a8dd842a7c5b204d3b08ba7",
+    "date": "2026-08-26",
+    "createdAt": "2026-08-25T18:00:34.528Z",
+    "totalVisitors": 2,
+    "updatedAt": "2026-08-25T18:06:48.134Z"
+  },
+  {
+    "_id": "6a96ad85f240853c8c0e5eb8",
+    "date": "2026-09-01",
+    "createdAt": "2026-09-01T10:48:37.419Z",
+    "totalVisitors": 2,
+    "updatedAt": "2026-09-01T14:23:39.623Z"
+  },
+  {
+    "_id": "6a9faa0d8afc9da98ca3d4ac",
+    "date": "2026-09-08",
+    "createdAt": "2026-09-08T06:24:12.990Z",
+    "totalVisitors": 2,
+    "updatedAt": "2026-09-08T17:21:21.221Z"
+  },
+  {
+    "_id": "6aa108c52aac7f9dfd9a36b3",
+    "date": "2026-09-09",
+    "createdAt": "2026-09-09T07:20:37.580Z",
+    "totalVisitors": 2,
+    "updatedAt": "2026-09-09T14:25:43.515Z"
+  }
+]

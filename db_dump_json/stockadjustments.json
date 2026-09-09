@@ -1,0 +1,38 @@
+[
+  {
+    "_id": "6aa17d1b97a4f50419e103ee",
+    "adjustmentNumber": "ADJ-000001",
+    "items": [
+      {
+        "product": "6a96dff5d7ac8de67911ce9d",
+        "variant": {
+          "sku": "KW-862044-0",
+          "attributes": [
+            {
+              "name": "Color",
+              "value": "Red",
+              "_id": "6aa17d1b97a4f50419e103f0"
+            },
+            {
+              "name": "Size",
+              "value": "Large",
+              "_id": "6aa17d1b97a4f50419e103f1"
+            }
+          ]
+        },
+        "quantity": 5,
+        "previousStock": 40,
+        "newStock": 35,
+        "reason": "lost",
+        "notes": "",
+        "_id": "6aa17d1b97a4f50419e103ef"
+      }
+    ],
+    "totalQuantity": 5,
+    "performedBy": "6a8b037965bec7a7e5c6f57a",
+    "notes": "ghfjhg",
+    "createdAt": "2026-09-09T15:36:59.084Z",
+    "updatedAt": "2026-09-09T15:36:59.084Z",
+    "__v": 0
+  }
+]

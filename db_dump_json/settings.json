@@ -1,0 +1,207 @@
+[
+  {
+    "_id": "6a8b037965bec7a7e5c6f57d",
+    "loyaltySettings": {
+      "coinPerItem": 1,
+      "coinValue": 1,
+      "isLoyaltyEnabled": true,
+      "earnOnDelivery": true,
+      "earnOnPaymentSuccess": true,
+      "minRedeemAmount": 1,
+      "signupBonusCoins": 0
+    },
+    "deliveryChargeSettings": {
+      "outsideDhaka": 150,
+      "insideDhaka": 80,
+      "subDhaka": 120,
+      "shippingFreeRequiredAmount": 3500
+    },
+    "isActive": true,
+    "isSendGuestOrderEmail": true,
+    "isSendGuestOrderSMS": true,
+    "isSendUserOrderEmail": true,
+    "isSendUserOrderSMS": true,
+    "isSendManualOrderEmail": true,
+    "isSendManualOrderSMS": true,
+    "isSendOrderStatusConfirmedEmail": true,
+    "isSendOrderStatusConfirmedSMS": true,
+    "affiliateSettings": {
+      "purchaserDiscountType": "percentage",
+      "purchaserDiscountValue": 5,
+      "referrerLoyaltyPointsPerPurchase": 10,
+      "purchaserLoyaltyPointsPerPurchase": 5,
+      "isAffiliateEnabled": true,
+      "isConfirmationModalShowWhenUseAffiliateLink": true
+    },
+    "steadfastSettings": {
+      "apiKey": "765765",
+      "apiSecret": "67576",
+      "webhookToken": "ca5aa011c52ef1493152c58b6cad4f54ec8db450ade1c71fd8151c42796d2a5d"
+    },
+    "telegramSettings": {
+      "botToken": "",
+      "chatId": "",
+      "enableSuccessMsgOnSteadfastCallback": false,
+      "enableDebugLogOnSteadfastCallback": false,
+      "notifyNewOrderExistingUser": false,
+      "notifyNewOrderGuestUser": false,
+      "notifyNewUserSignup": false,
+      "notifyPasswordChange": false
+    },
+    "siteSettings": {
+      "videoMenu": {
+        "isEnabled": false,
+        "name": "Videos",
+        "url": "/videos",
+        "backgroundColor": "#FF0000",
+        "textColor": "#FFFFFF",
+        "tailwindClasses": ""
+      },
+      "topHeroBanner": {
+        "type": "single",
+        "image": "",
+        "link": "",
+        "isActive": true,
+        "slides": []
+      },
+      "heroOffers": {
+        "isActive": true,
+        "gridColumns": 3,
+        "offers": []
+      },
+      "storeFeatures": {
+        "backgroundColor": "#FF1493",
+        "textColor": "#FFFFFF",
+        "iconColor": "#FFFFFF",
+        "lowStockThreshold": 10,
+        "features": []
+      },
+      "globalProductSubtitle": {
+        "text": "",
+        "isEnabled": false
+      },
+      "logoUrl": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQgPYeXb6BMBXw48lwwfxstTB0RY_BIQTCc7X7RRhVbNQ&s=10",
+      "ogImage": "https://softanex.com/assets/logo.png",
+      "isVideoAutoplayEnabled": true,
+      "trendingSortOrder": "latest",
+      "bestsellerSortOrder": "latest"
+    },
+    "orderSourceColors": {
+      "website": "",
+      "facebook": "",
+      "whatsapp": "",
+      "phone": "",
+      "email": "",
+      "walk-in": "",
+      "instagram": "",
+      "manual": "",
+      "other": ""
+    },
+    "createdAt": "2026-08-23T14:28:09.755Z",
+    "updatedAt": "2026-09-09T15:44:49.669Z",
+    "__v": 2,
+    "updatedBy": "6a8b037965bec7a7e5c6f57a",
+    "homepageLayout": {
+      "bestSellers": {
+        "isVisible": true,
+        "sortOrder": "latest",
+        "displayType": "slider",
+        "maxProducts": 10,
+        "hasPagination": false,
+        "productsPerPage": 10,
+        "maxPages": 3
+      },
+      "trending": {
+        "isVisible": true,
+        "sortOrder": "random",
+        "displayType": "grid",
+        "maxProducts": 40,
+        "hasPagination": true,
+        "productsPerPage": 4,
+        "maxPages": 2
+      },
+      "justForYou": {
+        "isVisible": true,
+        "sortOrder": "latest",
+        "maxProducts": 50
+      },
+      "newArrivals": {
+        "isVisible": true,
+        "sortOrder": "latest",
+        "displayType": "slider",
+        "maxProducts": 10,
+        "hasPagination": false,
+        "productsPerPage": 10,
+        "maxPages": 3
+      },
+      "dynamicCategories": [
+        {
+          "categoryId": "6a96bf1cee0b0c89c8cd45bc",
+          "isVisible": true,
+          "displayType": "grid",
+          "sortOrder": "latest",
+          "maxProducts": 10,
+          "hasPagination": false,
+          "productsPerPage": 10,
+          "maxPages": 3,
+          "_id": "6aa151cd6a00f16a6ba2e15a"
+        },
+        {
+          "categoryId": "6a96bf1cee0b0c89c8cd45a4",
+          "isVisible": true,
+          "displayType": "grid",
+          "sortOrder": "latest",
+          "maxProducts": 10,
+          "hasPagination": false,
+          "productsPerPage": 10,
+          "maxPages": 3,
+          "_id": "6aa151cd6a00f16a6ba2e15b"
+        },
+        {
+          "categoryId": "6a96b92b8d4b95bfa72400dc",
+          "isVisible": true,
+          "displayType": "grid",
+          "sortOrder": "latest",
+          "maxProducts": 10,
+          "hasPagination": false,
+          "productsPerPage": 10,
+          "maxPages": 3,
+          "_id": "6aa151cd6a00f16a6ba2e15c"
+        },
+        {
+          "categoryId": "6a96bf1cee0b0c89c8cd45a7",
+          "isVisible": true,
+          "displayType": "grid",
+          "sortOrder": "latest",
+          "maxProducts": 10,
+          "hasPagination": true,
+          "productsPerPage": 5,
+          "maxPages": 2,
+          "_id": "6aa151cd6a00f16a6ba2e15d"
+        },
+        {
+          "categoryId": "6a96bf1cee0b0c89c8cd459e",
+          "isVisible": true,
+          "displayType": "grid",
+          "sortOrder": "latest",
+          "maxProducts": 10,
+          "hasPagination": false,
+          "productsPerPage": 10,
+          "maxPages": 3,
+          "_id": "6aa151cd6a00f16a6ba2e15e"
+        },
+        {
+          "categoryId": "6a96bf1cee0b0c89c8cd45a1",
+          "isVisible": true,
+          "displayType": "grid",
+          "sortOrder": "latest",
+          "maxProducts": 10,
+          "hasPagination": false,
+          "productsPerPage": 10,
+          "maxPages": 3,
+          "_id": "6aa151cd6a00f16a6ba2e15f"
+        }
+      ]
+    }
+  }
+]

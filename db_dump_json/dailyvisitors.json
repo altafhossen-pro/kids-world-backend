@@ -1,0 +1,30 @@
+[
+  {
+    "_id": "6a9faa618afc9da98ca3d4ad",
+    "date": "2026-09-08",
+    "visitorId": "visitor_y0rtjihvucszrev2o16pq",
+    "createdAt": "2026-09-08T06:25:37.682Z",
+    "updatedAt": "2026-09-08T06:25:37.682Z"
+  },
+  {
+    "_id": "6a9fae948afc9da98ca3d4ae",
+    "date": "2026-09-08",
+    "visitorId": "visitor_7ldd44dzx0ptyy8igqkiw",
+    "createdAt": "2026-09-08T06:43:32.324Z",
+    "updatedAt": "2026-09-08T06:43:32.324Z"
+  },
+  {
+    "_id": "6aa1090f2aac7f9dfd9a36b4",
+    "date": "2026-09-09",
+    "visitorId": "visitor_y0rtjihvucszrev2o16pq",
+    "createdAt": "2026-09-09T07:21:51.378Z",
+    "updatedAt": "2026-09-09T07:21:51.378Z"
+  },
+  {
+    "_id": "6aa14f6992badff745663ad5",
+    "visitorId": "visitor_7ldd44dzx0ptyy8igqkiw",
+    "date": "2026-09-09",
+    "createdAt": "2026-09-09T12:22:00.024Z",
+    "updatedAt": "2026-09-09T12:22:00.024Z"
+  }
+]

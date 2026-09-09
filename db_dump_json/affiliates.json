@@ -1,0 +1,16 @@
+[
+  {
+    "_id": "6a96b6d18d4b95bfa7240061",
+    "user": "6a96b56b8d4b95bfa7240009",
+    "totalClicks": 0,
+    "uniqueClicks": 0,
+    "totalPurchases": 0,
+    "totalPurchaseAmount": 0,
+    "isActive": true,
+    "clicks": [],
+    "createdAt": "2026-09-01T11:28:17.693Z",
+    "updatedAt": "2026-09-01T11:28:17.693Z",
+    "affiliateCode": "RR3EICD8",
+    "__v": 0
+  }
+]

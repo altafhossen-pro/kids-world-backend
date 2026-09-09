@@ -1,0 +1,131 @@
+[
+  {
+    "_id": "6aa1794b97a4f50419e0fa2e",
+    "product": "6a96dff5d7ac8de67911ce74",
+    "variant": {
+      "sku": "KW-89980-4",
+      "attributes": []
+    },
+    "type": "remove",
+    "quantity": -2,
+    "previousStock": 42,
+    "newStock": 40,
+    "reason": "Order: 965054 - Confirmed",
+    "reference": "965054",
+    "performedBy": null,
+    "notes": "Order confirmed - stock removed",
+    "createdAt": "2026-09-09T15:20:43.139Z",
+    "updatedAt": "2026-09-09T15:20:43.139Z",
+    "__v": 0
+  },
+  {
+    "_id": "6aa17b2b97a4f50419e0ffc7",
+    "product": "6a96dff5d7ac8de67911ce74",
+    "variant": {
+      "sku": "KW-89980-4",
+      "attributes": []
+    },
+    "type": "add",
+    "quantity": 5,
+    "previousStock": 32,
+    "newStock": 37,
+    "reason": "Order: 965054 - Returned (Partial)",
+    "reference": "965054",
+    "performedBy": null,
+    "notes": "Item returned - stock added back (adjusts sold count)",
+    "createdAt": "2026-09-09T15:28:43.681Z",
+    "updatedAt": "2026-09-09T15:28:43.681Z",
+    "__v": 0
+  },
+  {
+    "_id": "6aa17ce597a4f50419e103ac",
+    "product": "6a96dff5d7ac8de67911ce9d",
+    "variant": {
+      "sku": "KW-862044-0",
+      "attributes": [
+        {
+          "name": "Color",
+          "value": "Red",
+          "_id": "6aa17ce597a4f50419e103ad"
+        },
+        {
+          "name": "Size",
+          "value": "Large",
+          "_id": "6aa17ce597a4f50419e103ae"
+        }
+      ]
+    },
+    "type": "add",
+    "quantity": 13,
+    "previousStock": 27,
+    "newStock": 40,
+    "reason": "Purchase",
+    "reference": "PUR-000001",
+    "performedBy": "6a8b037965bec7a7e5c6f57a",
+    "cost": 150,
+    "notes": "Purchase stock addition",
+    "createdAt": "2026-09-09T15:36:05.117Z",
+    "updatedAt": "2026-09-09T15:36:05.117Z",
+    "__v": 0
+  },
+  {
+    "_id": "6aa17ce597a4f50419e103b0",
+    "product": "6a96dff5d7ac8de67911cef2",
+    "variant": {
+      "sku": "KW-453971-3",
+      "attributes": [
+        {
+          "name": "Color",
+          "value": "Yellow",
+          "_id": "6aa17ce597a4f50419e103b1"
+        },
+        {
+          "name": "Size",
+          "value": "Standard",
+          "_id": "6aa17ce597a4f50419e103b2"
+        }
+      ]
+    },
+    "type": "add",
+    "quantity": 5,
+    "previousStock": 35,
+    "newStock": 40,
+    "reason": "Purchase",
+    "reference": "PUR-000001",
+    "performedBy": "6a8b037965bec7a7e5c6f57a",
+    "cost": 100,
+    "notes": "Purchase stock addition",
+    "createdAt": "2026-09-09T15:36:05.119Z",
+    "updatedAt": "2026-09-09T15:36:05.119Z",
+    "__v": 0
+  },
+  {
+    "_id": "6aa17d1b97a4f50419e103e9",
+    "product": "6a96dff5d7ac8de67911ce9d",
+    "variant": {
+      "sku": "KW-862044-0",
+      "attributes": [
+        {
+          "name": "Color",
+          "value": "Red",
+          "_id": "6aa17d1b97a4f50419e103ea"
+        },
+        {
+          "name": "Size",
+          "value": "Large",
+          "_id": "6aa17d1b97a4f50419e103eb"
+        }
+      ]
+    },
+    "type": "adjustment",
+    "quantity": -5,
+    "previousStock": 40,
+    "newStock": 35,
+    "reason": "Stock adjustment: lost",
+    "performedBy": "6a8b037965bec7a7e5c6f57a",
+    "notes": "ghfjhg",
+    "createdAt": "2026-09-09T15:36:59.081Z",
+    "updatedAt": "2026-09-09T15:36:59.081Z",
+    "__v": 0
+  }
+]

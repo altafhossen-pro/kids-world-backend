@@ -23,6 +23,7 @@ const allowedOrigins = [
     'https://kidsworldbd.com',
     'http://www.kidsworldbd.com',
     'https://www.kidsworldbd.com',
+    'https://new.kidsworldbd.com',
     'http://api.kidsworldbd.com',
     'https://api.kidsworldbd.com',
     'http://64.227.133.212:3000'

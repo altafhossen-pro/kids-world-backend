@@ -1,0 +1,25 @@
+[
+  {
+    "_id": "6a96c21f34fa3e30b28555e8",
+    "image": "http://localhost:5000/uploads/images/image-1788939013214-38326727.jpg",
+    "link": "/shop",
+    "isActive": true,
+    "order": 0,
+    "createdBy": "6a8b037965bec7a7e5c6f57a",
+    "createdAt": "2026-09-01T12:16:31.912Z",
+    "updatedAt": "2026-09-09T07:30:15.080Z",
+    "__v": 0,
+    "updatedBy": "6a8b037965bec7a7e5c6f57a"
+  },
+  {
+    "_id": "6a96c3d734fa3e30b2855613",
+    "image": "http://localhost:5000/uploads/images/image-1788265425650-460681156.webp",
+    "link": "/shop",
+    "isActive": true,
+    "order": 2,
+    "createdBy": "6a8b037965bec7a7e5c6f57a",
+    "createdAt": "2026-09-01T12:23:51.680Z",
+    "updatedAt": "2026-09-01T12:23:51.680Z",
+    "__v": 0
+  }
+]

@@ -1,0 +1,28 @@
+[
+  {
+    "_id": "6aa03e5b46e16a76f1d49580",
+    "title": "Deals Of the Day",
+    "subtitle": "Get the ultimate discount",
+    "image": "http://localhost:5000/uploads/images/image-1788886618077-153294623.png",
+    "endTime": "2026-09-24T10:56:00.000Z",
+    "buttonText": "Shop Deal Now",
+    "buttonLink": "#",
+    "isActive": true,
+    "createdAt": "2026-09-08T16:56:59.323Z",
+    "updatedAt": "2026-09-09T10:36:16.214Z",
+    "__v": 0
+  },
+  {
+    "_id": "6aa135e2288900d66756eeda",
+    "title": "test title",
+    "subtitle": "test desc",
+    "image": "http://localhost:5000/uploads/images/image-1788949985167-736344933.gif",
+    "endTime": "2026-09-10T04:32:00.000Z",
+    "buttonText": "Shop Now",
+    "buttonLink": "#",
+    "isActive": false,
+    "createdAt": "2026-09-09T10:33:06.734Z",
+    "updatedAt": "2026-09-09T10:34:31.040Z",
+    "__v": 0
+  }
+]

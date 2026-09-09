@@ -1,0 +1,18 @@
+[
+  {
+    "_id": "6aa17dc097a4f50419e1059b",
+    "smtpHost": "",
+    "smtpPort": 587,
+    "smtpUser": "",
+    "smtpPass": "",
+    "emailFrom": "",
+    "emailFromName": "",
+    "smsApiKey": "",
+    "smsSenderId": "8809648904634",
+    "isSendOrderConfirmationEmail": true,
+    "isSendGuestOrderConfirmationSMS": false,
+    "createdAt": "2026-09-09T15:39:44.084Z",
+    "updatedAt": "2026-09-09T15:39:44.084Z",
+    "__v": 0
+  }
+]
