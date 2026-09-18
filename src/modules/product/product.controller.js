@@ -47,7 +47,10 @@ const getPaginatedProducts = async (filter, req, res, message) => {
       }
     }
     
-    if (req.query.brand) queryFilter.brand = req.query.brand;
+    if (req.query.brand) {
+      const brands = req.query.brand.split(',').map(b => b.trim());
+      queryFilter.brand = { $in: brands };
+    }
     if (req.query.minPrice) queryFilter['priceRange.min'] = { $gte: Number(req.query.minPrice) };
     if (req.query.maxPrice) queryFilter['priceRange.max'] = { $lte: Number(req.query.maxPrice) };
     if (req.query.isActive !== undefined) queryFilter.isActive = req.query.isActive === 'true';
@@ -1516,3 +1519,24 @@ exports.getNextSkuForCategory = async (req, res) => {
   }
 };
 
+// Public: Get all distinct brands
+exports.getAllBrands = async (req, res) => {
+  try {
+    const brands = await Product.distinct('brand', { isActive: true, status: 'published', brand: { $ne: null, $ne: '' } });
+    return sendResponse({
+      res,
+      statusCode: 200,
+      success: true,
+      message: 'Brands fetched successfully',
+      data: brands.filter(Boolean).sort(),
+    });
+  } catch (error) {
+    return sendResponse({
+      res,
+      statusCode: 500,
+      success: false,
+      message: 'Failed to fetch brands',
+      error: error.message,
+    });
+  }
+};

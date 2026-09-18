@@ -94,7 +94,7 @@ app.get('/', (req, res) => {
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="bg-gradient-to-br from-pink-50 to-white h-screen w-full flex items-center justify-center m-0 font-sans">
+<body class="bg-gradient-to-br from-blue-50 to-white h-screen w-full flex items-center justify-center m-0 font-sans">
     <div class="text-center p-10 bg-white rounded-3xl shadow-2xl max-w-md w-full mx-4 border border-blue-100 transform transition-all duration-500 hover:scale-105 hover:shadow-pink-200/50">
         <div class="w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border border-blue-100">
             <i class="fa-solid fa-bag-shopping text-4xl text-blue-500"></i>

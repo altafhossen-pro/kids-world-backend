@@ -1935,23 +1935,25 @@ exports.updateOrderComprehensive = async (req, res) => {
           });
         }
 
+        const itemProductId = item.product?._id ? item.product._id.toString() : item.product?.toString();
         // Find the matching item in the old order to see what was already "reserved"
         const matchedOldItem = oldOrder.items.find(oi =>
-          oi.product?._id?.toString() === item.product?.toString() &&
-          ((!oi.variant && !item.variant) || (oi.variant?.sku === item.variant?.sku))
+          oi.product?._id?.toString() === itemProductId &&
+          ((!oi.variant && !item.variant) || (oi.variant?.sku === (item.variant?.sku || item.variantSku)))
         );
 
         const oldQuantity = matchedOldItem ? matchedOldItem.quantity : 0;
 
         // Check stock availability
-        if (item.variant && item.variant.sku) {
-          const variant = product.variants.find(v => v.sku === item.variant.sku);
+        const variantSku = item.variant?.sku || item.variantSku;
+        if (item.variant && variantSku) {
+          const variant = product.variants.find(v => v.sku === variantSku);
           if (!variant) {
             return sendResponse({
               res,
               statusCode: 400,
               success: false,
-              message: `Variant not found: ${item.variant.sku}`,
+              message: `Variant not found: ${variantSku}`,
             });
           }
 
@@ -1963,7 +1965,7 @@ exports.updateOrderComprehensive = async (req, res) => {
               res,
               statusCode: 400,
               success: false,
-              message: `Insufficient stock for variant ${item.variant.sku}`,
+              message: `Insufficient stock for variant ${variantSku}`,
             });
           }
         } else {
@@ -3490,29 +3492,45 @@ exports.addOrderToSteadfast = async (req, res) => {
     let recipientEmail = '';
     let recipientAddress = '';
 
-    // Get customer info from different sources
-    if (order.user && order.user.name) {
-      recipientName = order.user.name;
+    // Get customer info from different sources (Priority: Checkout > Guest/Manual > Profile)
+    if (order.shippingAddress && order.shippingAddress.name) {
+      recipientName = order.shippingAddress.name;
     } else if (order.guestInfo?.name) {
       recipientName = order.guestInfo.name;
     } else if (order.manualOrderInfo?.name) {
       recipientName = order.manualOrderInfo.name;
+    } else if (order.user && order.user.name) {
+      recipientName = order.user.name;
     }
 
-    if (order.user && order.user.phone) {
-      recipientPhone = order.user.phone;
+    if (order.shippingAddress && order.shippingAddress.phone) {
+      recipientPhone = order.shippingAddress.phone;
     } else if (order.guestInfo?.phone) {
       recipientPhone = order.guestInfo.phone;
     } else if (order.manualOrderInfo?.phone) {
       recipientPhone = order.manualOrderInfo.phone;
+    } else if (order.user && order.user.phone) {
+      recipientPhone = order.user.phone;
     }
 
-    if (order.user && order.user.email) {
-      recipientEmail = order.user.email;
+    if (order.shippingAddress && order.shippingAddress.email) {
+      recipientEmail = order.shippingAddress.email;
     } else if (order.guestInfo?.email) {
       recipientEmail = order.guestInfo.email;
     } else if (order.manualOrderInfo?.email) {
       recipientEmail = order.manualOrderInfo.email;
+    } else if (order.user && order.user.email) {
+      recipientEmail = order.user.email;
+    }
+
+    // Clean up recipient phone number for Steadfast
+    if (recipientPhone) {
+      recipientPhone = recipientPhone.replace(/\D/g, '');
+      if (recipientPhone.length > 11 && recipientPhone.startsWith('88')) {
+        recipientPhone = recipientPhone.slice(-11);
+      } else if (recipientPhone.length > 11) {
+        recipientPhone = recipientPhone.slice(-11);
+      }
     }
 
     // Build address string from shippingAddress
