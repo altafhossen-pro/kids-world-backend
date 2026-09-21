@@ -58,8 +58,22 @@ async function importData() {
       throw new Error(`Data files not found in ${dataDir}. Did you unzip migration-package.zip here?`);
     }
 
-    const categories = JSON.parse(fs.readFileSync(categoriesPath, 'utf8'));
-    const products = JSON.parse(fs.readFileSync(productsPath, 'utf8'));
+    let categoriesJson = fs.readFileSync(categoriesPath, 'utf8');
+    let productsJson = fs.readFileSync(productsPath, 'utf8');
+
+    // Replace localhost URLs with production BACKEND_URL
+    const backendUrl = process.env.BACKEND_URL;
+    if (backendUrl && backendUrl !== 'http://localhost:5000') {
+      console.log(`Replacing 'http://localhost:5000' with '${backendUrl}' in images...`);
+      categoriesJson = categoriesJson.replace(/http:\/\/localhost:5000/g, backendUrl);
+      productsJson = productsJson.replace(/http:\/\/localhost:5000/g, backendUrl);
+    } else {
+      console.log('WARNING: BACKEND_URL is either not set or set to localhost. URLs will not be changed.');
+      console.log('Please set BACKEND_URL=https://your-production-domain.com in your production .env file!');
+    }
+
+    const categories = JSON.parse(categoriesJson);
+    const products = JSON.parse(productsJson);
 
     // Insert Categories
     if (categories.length > 0) {
