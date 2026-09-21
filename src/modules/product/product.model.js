@@ -94,7 +94,7 @@ const productSchema = new mongoose.Schema({
   customSubtitle: { type: String, default: '' },
   globalSubtitle: { type: String, default: '' },
   isGlobalSubtitleOn: { type: Boolean, default: true },
-  shortDescription: { type: String, maxlength: 500 },
+  shortDescription: { type: String },
   description: { type: String },
   category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
   subCategories: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Category' }],
@@ -207,6 +207,11 @@ productSchema.pre('save', function (next) {
       };
     }
     this.totalStock = this.variants.reduce((total, variant) => total + (variant.stockQuantity || 0), 0);
+  } else {
+    this.priceRange = {
+      min: this.basePrice || 0,
+      max: this.basePrice || 0,
+    };
   }
   next();
 });

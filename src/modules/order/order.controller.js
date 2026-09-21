@@ -12,6 +12,7 @@ const sendResponse = require('../../utils/sendResponse');
 const { sendOrderConfirmationEmail } = require('../../utils/email');
 const { sendCustomSMS } = require('../../utils/smsService');
 const { Affiliate } = require('../affiliate/affiliate.model');
+const { clearProductCache } = require('../../utils/cache');
 const { AffiliateTracking } = require('../affiliate/affiliateTracking.model');
 const steadfastService = require('../steadfast/steadfast.service');
 const mongoose = require('mongoose');
@@ -735,6 +736,9 @@ exports.createOrder = async (req, res) => {
     } catch (telegramErr) {
       console.error('Telegram notification error for new order:', telegramErr);
     }
+
+    // Clear product cache to reflect new stock immediately
+    clearProductCache();
 
     return sendResponse({
       res,
@@ -1822,6 +1826,9 @@ exports.updateOrder = async (req, res) => {
         }
       }
     }
+
+    // Clear product cache because stock might have been updated
+    clearProductCache();
 
     return sendResponse({
       res,

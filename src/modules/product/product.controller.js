@@ -4,6 +4,7 @@ const Settings = require('../settings/settings.model');
 const { StockTracking } = require('../inventory/stockTracking.model');
 const sendResponse = require('../../utils/sendResponse');
 const mongoose = require('mongoose');
+const { clearProductCache } = require('../../utils/cache');
 
 // Helper function to sanitize slug (remove leading/trailing hyphens)
 const sanitizeSlug = (slug) => {
@@ -20,33 +21,33 @@ const getPaginatedProducts = async (filter, req, res, message) => {
     const sort = req.query.sort ? `${req.query.sort} _id` : 'sortOrder -createdAt _id';
 
     // Additional filters from query
-    const queryFilter = { 
+    const queryFilter = {
       isActive: true,
       status: 'published',
-      ...filter 
+      ...filter
     };
-    
+
     if (req.query.category) {
       const categoryIds = req.query.category.split(',').map(id => id.trim());
-      
+
       try {
         const { Category } = require('../category/category.model');
         const childCategories = await Category.find({
           parent: { $in: categoryIds }
         }).select('_id');
-        
+
         const allCategoryIds = [
           ...categoryIds,
           ...childCategories.map(child => child._id.toString())
         ];
-        
+
         queryFilter.category = { $in: allCategoryIds };
       } catch (err) {
         // Fallback if category model query fails
         queryFilter.category = { $in: categoryIds };
       }
     }
-    
+
     if (req.query.brand) {
       const brands = req.query.brand.split(',').map(b => b.trim());
       queryFilter.brand = { $in: brands };
@@ -55,7 +56,7 @@ const getPaginatedProducts = async (filter, req, res, message) => {
     if (req.query.maxPrice) queryFilter['priceRange.max'] = { $lte: Number(req.query.maxPrice) };
     if (req.query.isActive !== undefined) queryFilter.isActive = req.query.isActive === 'true';
     if (req.query.status) queryFilter.status = req.query.status;
-    
+
     // Add search functionality
     if (req.query.search) {
       const searchQuery = req.query.search;
@@ -86,15 +87,15 @@ const getPaginatedProducts = async (filter, req, res, message) => {
         { $match: queryFilter },
         { $sample: { size: limit } }
       ];
-      
+
       const randomProducts = await Product.aggregate(pipeline);
       // We need to populate category manually since it's an aggregation
       products = await Product.populate(randomProducts, { path: 'category' });
-      
+
       // OPTIMIZATION: Skip expensive countDocuments on large collections for random feeds.
       // If we got 'limit' items, assume there's at least one more page.
       const hasMore = products.length === limit;
-      
+
       return sendResponse({
         res,
         statusCode: 200,
@@ -148,7 +149,7 @@ exports.createProduct = async (req, res) => {
     if (!title) errors.push("Title is required");
     if (!category) errors.push("Category is required");
     if (!slug) errors.push("Slug is required");
-    
+
     if (variants && Array.isArray(variants)) {
       variants.forEach((v, idx) => {
         if (!v.sku) errors.push(`SKU is required for variant ${idx + 1}`);
@@ -171,18 +172,18 @@ exports.createProduct = async (req, res) => {
     if (req.body.slug) {
       req.body.slug = sanitizeSlug(req.body.slug);
     }
-    
+
     // Handle empty category field - convert empty string to null to prevent CastError
     if (req.body.category === '') {
       req.body.category = null;
     }
-    
+
     if (req.body.subCategories === '') {
       req.body.subCategories = [];
     } else if (Array.isArray(req.body.subCategories)) {
       req.body.subCategories = req.body.subCategories.filter(sub => sub !== '');
     }
-    
+
     const product = new Product(req.body);
     await product.save();
 
@@ -223,6 +224,8 @@ exports.createProduct = async (req, res) => {
       await stockTracking.save();
     }
 
+    clearProductCache();
+
     return sendResponse({
       res,
       statusCode: 201,
@@ -237,7 +240,7 @@ exports.createProduct = async (req, res) => {
     // Handle specific MongoDB errors
     if (error.code === 11000) {
       statusCode = 400;
-      
+
       // Check if it's a duplicate SKU error
       if (error.keyPattern && error.keyPattern['variants.sku']) {
         const duplicateSku = error.keyValue['variants.sku'];
@@ -361,19 +364,19 @@ exports.getAdminProducts = async (req, res) => {
 
     if (req.query.category) {
       const categoryIds = req.query.category.split(',').map(id => id.trim());
-      
+
       // Get all child categories for the selected parent categories
       const { Category } = require('../category/category.model');
       const childCategories = await Category.find({
         parent: { $in: categoryIds }
       }).select('_id');
-      
+
       // Combine parent and child category IDs
       const allCategoryIds = [
         ...categoryIds,
         ...childCategories.map(child => child._id.toString())
       ];
-      
+
       queryFilter.category = { $in: allCategoryIds };
     }
 
@@ -386,16 +389,16 @@ exports.getAdminProducts = async (req, res) => {
 
     let processedProducts = products;
     if (statusFilter === 'low_stock') {
-        const settings = await Settings.findOne();
-        const lowStockThreshold = settings?.siteSettings?.lowStockThreshold ?? 10;
-        
-        processedProducts = products.map(doc => {
-            const product = doc.toObject({ virtuals: true });
-            if (product.variants && product.variants.length > 0) {
-                product.variants = product.variants.filter(v => v.stockQuantity <= lowStockThreshold);
-            }
-            return product;
-        });
+      const settings = await Settings.findOne();
+      const lowStockThreshold = settings?.siteSettings?.lowStockThreshold ?? 10;
+
+      processedProducts = products.map(doc => {
+        const product = doc.toObject({ virtuals: true });
+        if (product.variants && product.variants.length > 0) {
+          product.variants = product.variants.filter(v => v.stockQuantity <= lowStockThreshold);
+        }
+        return product;
+      });
     }
 
     return sendResponse({
@@ -494,20 +497,20 @@ exports.getRandomProducts = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 5;
     const excludeIds = req.query.exclude ? req.query.exclude.split(',') : [];
-    
+
     // Build match filter
     const matchFilter = {
       isActive: true,
       status: 'published'
     };
-    
+
     // Exclude already loaded product IDs
     if (excludeIds.length > 0) {
       matchFilter._id = {
         $nin: excludeIds.map(id => new mongoose.Types.ObjectId(id))
       };
     }
-    
+
     // Use aggregation with $sample to get random products
     const products = await Product.aggregate([
       {
@@ -569,10 +572,10 @@ exports.getProductVideos = async (req, res) => {
       },
       {
         $match: {
-          productVideos: { 
-            $ne: null, 
-            $ne: "", 
-            $regex: /youtube\.com|youtu\.be/i 
+          productVideos: {
+            $ne: null,
+            $ne: "",
+            $regex: /youtube\.com|youtu\.be/i
           }
         }
       },
@@ -639,13 +642,13 @@ exports.getAvailableFilters = async (req, res) => {
       const childCategories = await Category.find({
         parent: { $in: categoryIds }
       }).select('_id');
-      
+
       // Combine parent and child category IDs
       const allCategoryIds = [
         ...categoryIds,
         ...childCategories.map(child => child._id.toString())
       ];
-      
+
       queryFilter.category = { $in: allCategoryIds };
     }
 
@@ -756,19 +759,19 @@ exports.searchProducts = async (req, res) => {
     // Additional filters
     if (req.query.category) {
       const categoryIds = req.query.category.split(',').map(id => id.trim());
-      
+
       // Get all child categories for the selected parent categories
       const { Category } = require('../category/category.model');
       const childCategories = await Category.find({
         parent: { $in: categoryIds }
       }).select('_id');
-      
+
       // Combine parent and child category IDs
       const allCategoryIds = [
         ...categoryIds,
         ...childCategories.map(child => child._id.toString())
       ];
-      
+
       queryFilter.category = { $in: allCategoryIds };
     }
 
@@ -938,7 +941,7 @@ exports.getProductBySlug = async (req, res) => {
       .populate('category')
       .populate('subCategories');
 
-    
+
 
     if (!product) {
       return sendResponse({
@@ -971,7 +974,7 @@ exports.getProductById = async (req, res) => {
     const product = await Product.findById(id)
       .populate('category')
       .populate('subCategories');
-    
+
     if (!product) {
       return sendResponse({
         res,
@@ -1004,7 +1007,7 @@ exports.getAdminProductById = async (req, res) => {
     const product = await Product.findById(id)
       .populate('category')
       .populate('subCategories');
-    
+
     if (!product) {
       return sendResponse({
         res,
@@ -1013,7 +1016,7 @@ exports.getAdminProductById = async (req, res) => {
         message: 'Product not found',
       });
     }
-    
+
     return sendResponse({
       res,
       statusCode: 200,
@@ -1035,23 +1038,23 @@ exports.updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
-    
+
     // Sanitize slug to remove leading/trailing hyphens
     if (updates.slug) {
       updates.slug = sanitizeSlug(updates.slug);
     }
-    
+
     // Handle empty category field - convert empty string to null to prevent CastError
     if (updates.category === '') {
       updates.category = null;
     }
-    
+
     if (updates.subCategories === '') {
       updates.subCategories = [];
     } else if (Array.isArray(updates.subCategories)) {
       updates.subCategories = updates.subCategories.filter(sub => sub !== '');
     }
-    
+
     // Get the original product to compare stock changes
     const originalProduct = await Product.findById(id);
     if (!originalProduct) {
@@ -1065,17 +1068,17 @@ exports.updateProduct = async (req, res) => {
 
     // Update the product
     const product = await Product.findByIdAndUpdate(id, updates, { new: true });
-    
+
     // Check for stock changes and create tracking records
     const stockTrackingRecords = [];
-    
+
     // Check main product stock changes
     if (updates.totalStock !== undefined && updates.totalStock !== originalProduct.totalStock) {
       const previousStock = originalProduct.totalStock || 0;
       const newStock = updates.totalStock;
       const quantity = Math.abs(newStock - previousStock);
       const type = newStock > previousStock ? 'add' : 'remove';
-      
+
       const stockTracking = new StockTracking({
         product: id,
         variant: null,
@@ -1089,24 +1092,24 @@ exports.updateProduct = async (req, res) => {
         cost: null,
         notes: `Main product stock changed from ${previousStock} to ${newStock} units`
       });
-      
+
       stockTrackingRecords.push(stockTracking);
     }
-    
+
     // Check variant stock changes
     if (updates.variants && Array.isArray(updates.variants)) {
       for (const updatedVariant of updates.variants) {
         if (updatedVariant.sku) {
           const originalVariant = originalProduct.variants.find(v => v.sku === updatedVariant.sku);
-          
+
           if (originalVariant && updatedVariant.stockQuantity !== undefined) {
             const previousStock = originalVariant.stockQuantity || 0;
             const newStock = updatedVariant.stockQuantity;
-            
+
             if (previousStock !== newStock) {
               const quantity = Math.abs(newStock - previousStock);
               const type = newStock > previousStock ? 'add' : 'remove';
-              
+
               const stockTracking = new StockTracking({
                 product: id,
                 variant: {
@@ -1123,19 +1126,21 @@ exports.updateProduct = async (req, res) => {
                 cost: null,
                 notes: `Variant stock changed from ${previousStock} to ${newStock} units`
               });
-              
+
               stockTrackingRecords.push(stockTracking);
             }
           }
         }
       }
     }
-    
+
     // Save all stock tracking records
     if (stockTrackingRecords.length > 0) {
       await StockTracking.insertMany(stockTrackingRecords);
     }
-    
+
+    clearProductCache();
+
     return sendResponse({
       res,
       statusCode: 200,
@@ -1168,6 +1173,8 @@ exports.deleteProduct = async (req, res) => {
         message: 'Product not found',
       });
     }
+    clearProductCache();
+
     return sendResponse({
       res,
       statusCode: 200,
@@ -1203,7 +1210,7 @@ exports.checkStockAvailability = async (req, res) => {
     for (const cartItem of cartItems) {
       try {
         const product = await Product.findById(cartItem.productId);
-        
+
         if (!product) {
           stockCheckResults.push({
             cartItemId: cartItem.id,
@@ -1220,7 +1227,7 @@ exports.checkStockAvailability = async (req, res) => {
         if (product.variants && product.variants.length > 0) {
           // Find the specific variant
           const variant = product.variants.find(v => v.sku === cartItem.sku);
-          
+
           if (!variant) {
             stockCheckResults.push({
               cartItemId: cartItem.id,
@@ -1309,7 +1316,7 @@ exports.getSimilarProducts = async (req, res) => {
 
     // First, get the current product to find its category
     const currentProduct = await Product.findById(productId).populate('category');
-    
+
     if (!currentProduct) {
       return sendResponse({
         res,
@@ -1329,33 +1336,33 @@ exports.getSimilarProducts = async (req, res) => {
         category: currentProduct.category._id,
         isActive: true
       })
-      .populate('category')
-      .sort({ createdAt: -1 })
-      .limit(limit);
+        .populate('category')
+        .sort({ createdAt: -1 })
+        .limit(limit);
 
       similarProducts = categoryProducts;
-      
+
     }
 
     // Step 2: If we don't have enough products from same category, fill with products from all categories
     if (similarProducts.length < minRequired) {
       const remainingNeeded = limit - similarProducts.length;
-      
+
       // Get additional products from all categories, excluding current product and already selected ones
       const excludeIds = [productId, ...similarProducts.map(p => p._id)];
-      
+
       const additionalProducts = await Product.find({
         _id: { $nin: excludeIds },
         isActive: true
       })
-      .populate('category')
-      .sort({ createdAt: -1 })
-      .limit(remainingNeeded);
+        .populate('category')
+        .sort({ createdAt: -1 })
+        .limit(remainingNeeded);
 
       similarProducts = [...similarProducts, ...additionalProducts];
       source = similarProducts.length > minRequired ? 'mixed' : 'all';
-      
-      
+
+
     }
 
     // Ensure we don't exceed the limit
@@ -1456,7 +1463,7 @@ exports.getNextSkuForCategory = async (req, res) => {
     }
 
     const { prefix, digitsLength } = category.skuSettings;
-    
+
     // Default prefix if not set
     const searchPrefix = prefix || '';
 
@@ -1473,7 +1480,7 @@ exports.getNextSkuForCategory = async (req, res) => {
     const products = await Product.find(query).select('variants.sku');
 
     let maxNumber = 0;
-    
+
     for (const product of products) {
       if (product.variants && product.variants.length > 0) {
         for (const variant of product.variants) {
@@ -1491,7 +1498,7 @@ exports.getNextSkuForCategory = async (req, res) => {
 
     // Increment
     const nextNumber = maxNumber + 1;
-    
+
     // Pad with zeros
     const paddedNumber = String(nextNumber).padStart(digitsLength || 5, '0');
     const nextSku = searchPrefix + paddedNumber;

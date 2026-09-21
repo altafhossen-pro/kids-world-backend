@@ -4,17 +4,19 @@ const productController = require('./product.controller');
 const verifyTokenAdmin = require('../../middlewares/verifyTokenAdmin');
 const { checkPermission } = require('../../middlewares/checkPermission');
 
+const cacheMiddleware = require('../../middleware/cacheMiddleware');
+
 // Special product lists
-router.get('/featured', productController.getFeaturedProducts);
-router.get('/discounted', productController.getDiscountedProducts);
-router.get('/new-arrivals', productController.getNewArrivals);
-router.get('/bestselling', productController.getBestsellingProducts);
-router.get('/trending', productController.getTrendingProducts);
-router.get('/random', productController.getRandomProducts);
-router.get('/product-videos', productController.getProductVideos);
-router.get('/search', productController.searchProducts);
-router.get('/filters', productController.getAvailableFilters);
-router.get('/similar/:productId', productController.getSimilarProducts);
+router.get('/featured', cacheMiddleware, productController.getFeaturedProducts);
+router.get('/discounted', cacheMiddleware, productController.getDiscountedProducts);
+router.get('/new-arrivals', cacheMiddleware, productController.getNewArrivals);
+router.get('/bestselling', cacheMiddleware, productController.getBestsellingProducts);
+router.get('/trending', cacheMiddleware, productController.getTrendingProducts);
+router.get('/random', cacheMiddleware, productController.getRandomProducts);
+router.get('/product-videos', cacheMiddleware, productController.getProductVideos);
+router.get('/search', cacheMiddleware, productController.searchProducts);
+router.get('/filters', cacheMiddleware, productController.getAvailableFilters);
+router.get('/similar/:productId', cacheMiddleware, productController.getSimilarProducts);
 
 // Stock checking
 router.post('/check-stock', productController.checkStockAvailability);

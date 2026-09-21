@@ -87,15 +87,15 @@ const getTestimonialById = async (req, res) => {
 // Create testimonial
 const createTestimonial = async (req, res) => {
     try {
-        const { image, isActive = true, order = 0 } = req.body;
+        const { image, name, role, text, rating, isActive = true, order = 0 } = req.body;
 
         // Validation
-        if (!image) {
+        if (!name || !text) {
             return sendResponse({
             res,
             statusCode: 400,
             success: false,
-            message: 'Image is required'
+            message: 'Name and text are required'
         });
         }
 
@@ -108,6 +108,10 @@ const createTestimonial = async (req, res) => {
 
         const testimonial = new Testimonial({
             image,
+            name,
+            role,
+            text,
+            rating,
             isActive,
             order: finalOrder
         });
@@ -246,7 +250,7 @@ const getActiveTestimonials = async (req, res) => {
     try {
         const testimonials = await Testimonial.find({ isActive: true })
             .sort({ order: 1, createdAt: -1 })
-            .select('image order isActive');
+            .select('image name role text rating order isActive');
 
         return sendResponse({
             res,
