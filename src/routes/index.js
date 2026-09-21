@@ -66,7 +66,10 @@ router.use('/notification', notificationRoutes);
 router.use('/delivery-rule', deliveryRuleRoutes);
 router.use('/steadfast', steadfastRoutes);
 router.use('/blocklist', blocklistRoutes);
+const topBrandRoutes = require('../modules/topBrand/topBrand.route');
+
 router.use('/deal-of-the-day', dealOfTheDayRoutes);
+router.use('/top-brands', topBrandRoutes);
 
 // Health check route
 router.get('/health', (req, res) => {
