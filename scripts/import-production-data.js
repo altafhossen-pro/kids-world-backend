@@ -5,7 +5,7 @@ require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const { Category } = require('../src/modules/category/category.model');
 const { Product } = require('../src/modules/product/product.model');
-const Order = require('../src/modules/order/order.model');
+const { Order } = require('../src/modules/order/order.model');
 
 // Optional models that might not be exported directly or might not exist
 let StockTracking;
