@@ -231,8 +231,12 @@ exports.createOrder = async (req, res) => {
 
           actualPrice = variant.currentPrice;
         } else {
-          // No variant, use base price
-          actualPrice = product.basePrice;
+          // No variant, use singleVariant price if simple, otherwise base price
+          if ((product.productType === 'simple' || (product.singleVariant && product.singleVariant.currentPrice !== undefined)) && product.singleVariant) {
+            actualPrice = product.singleVariant.currentPrice;
+          } else {
+            actualPrice = product.basePrice;
+          }
         }
 
         // Validate price matches actual product price
@@ -533,12 +537,15 @@ exports.createOrder = async (req, res) => {
         let previousStock = 0;
         let newStock = 0;
 
-        // Update variant stock if variant exists
-        if (item.variant && item.variant.sku) {
+        // Check if product is simple or variant-based
+        const productData = await Product.findById(item.product);
+        const isSimpleProduct = productData && (productData.productType === 'simple' || (productData.singleVariant && productData.singleVariant.stockQuantity !== undefined));
+
+        // Update variant stock if variant exists and it's NOT a simple product
+        if (item.variant && item.variant.sku && !isSimpleProduct) {
           // Get product to find variant and previous stock
-          const product = await Product.findById(item.product);
-          if (product) {
-            const variant = product.variants.find(v => v.sku === item.variant.sku);
+          if (productData) {
+            const variant = productData.variants.find(v => v.sku === item.variant.sku);
             if (variant) {
               previousStock = variant.stockQuantity || 0;
             }
@@ -584,20 +591,24 @@ exports.createOrder = async (req, res) => {
           }
         } else {
           // Get product for previous stock
-          const product = await Product.findById(item.product);
-          if (product) {
-            previousStock = product.totalStock || 0;
+          if (productData) {
+            previousStock = isSimpleProduct ? (productData.singleVariant?.stockQuantity || 0) : (productData.totalStock || 0);
           }
 
-          // Update main product stock
+          // Update main product stock or singleVariant stock
+          let updateQuery = { $inc: { totalStock: -item.quantity } };
+          if (isSimpleProduct) {
+            updateQuery = { $inc: { 'singleVariant.stockQuantity': -item.quantity } };
+          }
+
           const result = await Product.findByIdAndUpdate(
             item.product,
-            { $inc: { totalStock: -item.quantity } },
+            updateQuery,
             { new: true }
           );
 
           if (result) {
-            newStock = result.totalStock || 0;
+            newStock = isSimpleProduct ? (result.singleVariant?.stockQuantity || 0) : (result.totalStock || 0);
 
             // Create stock tracking record for sold items
             const stockTracking = new StockTracking({
@@ -1254,7 +1265,7 @@ exports.getOrderById = async (req, res) => {
     const { id } = req.params;
     const order = await Order.findOne({ _id: id, isDeleted: false })
       .populate('user', 'name email phone')
-      .populate('items.product', 'totalStock variants isForceOutOfStock');
+      .populate('items.product', 'totalStock variants singleVariant isForceOutOfStock featuredImage image');
     if (!order) {
       return sendResponse({
         res,
@@ -2902,6 +2913,8 @@ exports.createManualOrder = async (req, res) => {
       discount: discount || 0,
       shippingCost: shippingCost || 0,
       shippingAddress: {
+        name: guestInfo?.name || '',
+        phone: targetPhone || '',
         label: 'Manual Order',
         street: deliveryAddress || '',
         city: '',

@@ -32,14 +32,21 @@ const getPaginatedProducts = async (filter, req, res, message) => {
 
       try {
         const { Category } = require('../category/category.model');
-        const childCategories = await Category.find({
-          parent: { $in: categoryIds }
-        }).select('_id');
-
-        const allCategoryIds = [
-          ...categoryIds,
-          ...childCategories.map(child => child._id.toString())
-        ];
+        
+        let allCategoryIds = [...categoryIds];
+        let currentLevelIds = [...categoryIds];
+        
+        // Recursively find all nested child categories
+        while (currentLevelIds.length > 0) {
+          const children = await Category.find({
+            parent: { $in: currentLevelIds }
+          }).select('_id');
+          
+          if (children.length === 0) break;
+          
+          currentLevelIds = children.map(child => child._id.toString());
+          allCategoryIds.push(...currentLevelIds);
+        }
 
         queryFilter.category = { $in: allCategoryIds };
       } catch (err) {
@@ -56,6 +63,8 @@ const getPaginatedProducts = async (filter, req, res, message) => {
     if (req.query.maxPrice) queryFilter['priceRange.max'] = { $lte: Number(req.query.maxPrice) };
     if (req.query.isActive !== undefined) queryFilter.isActive = req.query.isActive === 'true';
     if (req.query.status) queryFilter.status = req.query.status;
+    if (req.query.isNewArrival === 'true') queryFilter.isNewArrival = true;
+    if (req.query.isBestselling === 'true') queryFilter.isBestselling = true;
 
     // Add search functionality
     if (req.query.search) {
@@ -358,7 +367,8 @@ exports.getAdminProducts = async (req, res) => {
         { description: { $regex: searchQuery, $options: 'i' } },
         { tags: { $in: [new RegExp(searchQuery, 'i')] } },
         { brand: { $regex: searchQuery, $options: 'i' } },
-        { 'variants.sku': { $regex: searchQuery, $options: 'i' } }
+        { 'variants.sku': { $regex: searchQuery, $options: 'i' } },
+        { 'singleVariant.sku': { $regex: searchQuery, $options: 'i' } }
       ];
     }
 
@@ -752,7 +762,8 @@ exports.searchProducts = async (req, res) => {
         { description: { $regex: searchQuery, $options: 'i' } },
         { tags: { $in: [new RegExp(searchQuery, 'i')] } },
         { brand: { $regex: searchQuery, $options: 'i' } },
-        { 'variants.sku': { $regex: searchQuery, $options: 'i' } }
+        { 'variants.sku': { $regex: searchQuery, $options: 'i' } },
+        { 'singleVariant.sku': { $regex: searchQuery, $options: 'i' } }
       ];
     }
 
@@ -1254,8 +1265,11 @@ exports.checkStockAvailability = async (req, res) => {
             reason: isAvailable ? 'In stock' : 'Insufficient stock'
           });
         } else {
-          // Product without variants - check totalStock
-          const availableStock = product.totalStock || 0;
+          // Product without variants (legacy or simple)
+          const availableStock = (product.productType === 'simple' || (product.singleVariant && product.singleVariant.stockQuantity !== undefined))
+            ? (product.singleVariant?.stockQuantity || 0)
+            : (product.totalStock || 0);
+            
           const isAvailable = availableStock >= cartItem.quantity;
 
           stockCheckResults.push({

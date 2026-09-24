@@ -44,7 +44,7 @@ exports.submitContact = async (req, res) => {
     await contact.save();
 
     // Send email to admin
-    const adminEmail = 'support@tigerhoster.com';
+    const adminEmail = 'support@kidsworldbd.com';
     const emailSubject = `New Contact Form Submission: ${subject}`;
 
     const emailText = `

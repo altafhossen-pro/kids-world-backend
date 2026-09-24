@@ -53,6 +53,24 @@ const productVariantSchema = new mongoose.Schema({
   availableUntil: { type: Date },
 }, { timestamps: true });
 
+// Single Product Details Schema (for 'simple' products)
+const singleProductDetailsSchema = new mongoose.Schema({
+  sku: { type: String, sparse: true },
+  barcode: { type: String },
+  currentPrice: { type: Number },
+  originalPrice: { type: Number },
+  costPrice: { type: Number },
+  salePrice: { type: Number },
+  stockQuantity: { type: Number, default: 0 },
+  lowStockThreshold: { type: Number, default: 5 },
+  stockStatus: {
+    type: String,
+    enum: ['in_stock', 'out_of_stock', 'low_stock', 'pre_order'],
+    default: 'in_stock',
+  },
+  images: [productImageSchema],
+}, { _id: false });
+
 // SEO Schema
 const seoSchema = new mongoose.Schema({
   metaTitle: { type: String },
@@ -115,6 +133,7 @@ const productSchema = new mongoose.Schema({
   gallery: [productImageSchema],
   productVideos: { type: [String], default: [] },
   variants: [productVariantSchema],
+  singleVariant: singleProductDetailsSchema,
   basePrice: { type: Number },
   priceRange: {
     min: { type: Number },
@@ -178,6 +197,10 @@ productSchema.index({ averageRating: -1 });
 productSchema.index({ totalSold: -1 });
 
 productSchema.virtual('calculatedPriceRange').get(function () {
+  if (this.productType === 'simple' && this.singleVariant) {
+    const sp = this.singleVariant.currentPrice || this.basePrice || 0;
+    return { min: sp, max: sp };
+  }
   if (this.variants && this.variants.length > 0) {
     const prices = this.variants.map(v => v.currentPrice).filter(p => p > 0);
     if (prices.length > 0) {
@@ -191,6 +214,9 @@ productSchema.virtual('calculatedPriceRange').get(function () {
 });
 
 productSchema.virtual('calculatedTotalStock').get(function () {
+  if (this.productType === 'simple' && this.singleVariant) {
+    return this.singleVariant.stockQuantity || 0;
+  }
   if (this.variants && this.variants.length > 0) {
     return this.variants.reduce((total, variant) => total + (variant.stockQuantity || 0), 0);
   }
@@ -198,7 +224,13 @@ productSchema.virtual('calculatedTotalStock').get(function () {
 });
 
 productSchema.pre('save', function (next) {
-  if (this.variants && this.variants.length > 0) {
+  if (this.productType === 'simple' && this.singleVariant) {
+    this.priceRange = {
+      min: this.singleVariant.currentPrice || this.basePrice || 0,
+      max: this.singleVariant.currentPrice || this.basePrice || 0,
+    };
+    this.totalStock = this.singleVariant.stockQuantity || 0;
+  } else if (this.variants && this.variants.length > 0) {
     const prices = this.variants.map(v => v.currentPrice).filter(p => p > 0);
     if (prices.length > 0) {
       this.priceRange = {

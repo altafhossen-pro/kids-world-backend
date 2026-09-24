@@ -34,6 +34,7 @@ const androidBannerRoutes = require('../modules/androidBanner/androidBanner.rout
 const steadfastRoutes = require('../modules/steadfast/steadfast.route');
 const blocklistRoutes = require('../modules/blocklist/blocklist.route');
 const dealOfTheDayRoutes = require('../modules/dealOfTheDay/dealOfTheDay.route');
+const dashboardRoutes = require('../modules/dashboard/dashboard.route');
 
 router.use('/user', userRoutes);
 router.use('/otp', otpRoutes);
@@ -70,6 +71,7 @@ const topBrandRoutes = require('../modules/topBrand/topBrand.route');
 
 router.use('/deal-of-the-day', dealOfTheDayRoutes);
 router.use('/top-brands', topBrandRoutes);
+router.use('/dashboard', dashboardRoutes);
 
 // Health check route
 router.get('/health', (req, res) => {
