@@ -710,6 +710,22 @@ exports.getAvailableFilters = async (req, res) => {
     const showRingFilter = hasRings > 0;
 
 
+    // Calculate min and max price using aggregation
+    const priceAggregation = await Product.aggregate([
+      { $match: queryFilter },
+      { 
+        $group: { 
+          _id: null, 
+          minPrice: { $min: '$priceRange.min' }, 
+          maxPrice: { $max: '$priceRange.max' } 
+        } 
+      }
+    ]);
+    
+    const minPrice = priceAggregation.length > 0 ? Math.floor(priceAggregation[0].minPrice || 0) : 0;
+    const maxPrice = priceAggregation.length > 0 ? Math.ceil(priceAggregation[0].maxPrice || 10000) : 10000;
+
+
     return sendResponse({
       res,
       statusCode: 200,
@@ -719,7 +735,9 @@ exports.getAvailableFilters = async (req, res) => {
         braceletSizes: uniqueBraceletSizes,
         ringSizes: uniqueRingSizes,
         showBraceletFilter: showBraceletFilter,
-        showRingFilter: showRingFilter
+        showRingFilter: showRingFilter,
+        minPrice,
+        maxPrice
       }
     });
 
@@ -1343,19 +1361,56 @@ exports.getSimilarProducts = async (req, res) => {
     let similarProducts = [];
     let source = 'category'; // Track where products came from
 
+    // Helper to extract keywords from title
+    const getKeywords = (title) => {
+      if (!title) return [];
+      return title.toLowerCase().split(/[\s,.-]+/).filter(w => w.length > 2);
+    };
+    const currentKeywords = getKeywords(currentProduct.title);
+
     // Step 1: Try to get products from the same category first
     if (currentProduct.category) {
+      // Fetch a larger pool of products from the same category
       const categoryProducts = await Product.find({
         _id: { $ne: productId }, // Exclude current product
         category: currentProduct.category._id,
         isActive: true
       })
         .populate('category')
-        .sort({ createdAt: -1 })
-        .limit(limit);
+        .limit(50); // Get up to 50 for scoring
 
-      similarProducts = categoryProducts;
+      // Score them based on keyword overlap
+      const scoredProducts = categoryProducts.map(p => {
+        const pKeywords = getKeywords(p.title);
+        let score = 0;
+        currentKeywords.forEach(kw => {
+          if (pKeywords.includes(kw)) score += 1;
+        });
+        return { product: p, score };
+      });
 
+      // Sort by score descending
+      scoredProducts.sort((a, b) => b.score - a.score);
+
+      // Group into high match vs rest
+      const highMatch = scoredProducts.filter(p => p.score > 0).map(p => p.product);
+      const restCategory = scoredProducts.filter(p => p.score === 0).map(p => p.product);
+
+      // Shuffle function
+      const shuffle = (array) => {
+        for (let i = array.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+      };
+
+      // Shuffle both groups to give a randomized but prioritized list
+      shuffle(highMatch);
+      shuffle(restCategory);
+
+      // Combine
+      similarProducts = [...highMatch, ...restCategory].slice(0, limit);
     }
 
     // Step 2: If we don't have enough products from same category, fill with products from all categories
@@ -1365,18 +1420,17 @@ exports.getSimilarProducts = async (req, res) => {
       // Get additional products from all categories, excluding current product and already selected ones
       const excludeIds = [productId, ...similarProducts.map(p => p._id)];
 
-      const additionalProducts = await Product.find({
-        _id: { $nin: excludeIds },
-        isActive: true
-      })
-        .populate('category')
-        .sort({ createdAt: -1 })
-        .limit(remainingNeeded);
+      // Use aggregation for random sample from other categories
+      const additionalProducts = await Product.aggregate([
+        { $match: { _id: { $nin: excludeIds.map(id => new mongoose.Types.ObjectId(id)) }, isActive: true } },
+        { $sample: { size: remainingNeeded } }
+      ]);
+
+      // Populate category for the aggregated products
+      await Product.populate(additionalProducts, { path: 'category' });
 
       similarProducts = [...similarProducts, ...additionalProducts];
       source = similarProducts.length > minRequired ? 'mixed' : 'all';
-
-
     }
 
     // Ensure we don't exceed the limit
