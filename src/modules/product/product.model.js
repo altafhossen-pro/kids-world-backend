@@ -26,7 +26,7 @@ const variantAttributeSchema = new mongoose.Schema({
 
 // Product Variant Schema
 const productVariantSchema = new mongoose.Schema({
-  sku: { type: String, required: true, unique: true, index: true },
+  sku: { type: String, required: true },
   barcode: { type: String },
   attributes: [variantAttributeSchema],
   currentPrice: { type: Number, required: true },
@@ -195,6 +195,14 @@ productSchema.index({ tags: 1 });
 productSchema.index({ createdAt: -1 });
 productSchema.index({ averageRating: -1 });
 productSchema.index({ totalSold: -1 });
+productSchema.index(
+  { 'variants.sku': 1 },
+  {
+    unique: true,
+    partialFilterExpression: { 'variants.0': { $exists: true } },
+    background: true,
+  }
+);
 
 productSchema.virtual('calculatedPriceRange').get(function () {
   if (this.productType === 'simple' && this.singleVariant) {

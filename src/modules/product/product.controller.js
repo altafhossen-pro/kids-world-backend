@@ -193,6 +193,11 @@ exports.createProduct = async (req, res) => {
       req.body.subCategories = req.body.subCategories.filter(sub => sub !== '');
     }
 
+    // If productType is 'simple', ensure variants is an empty array or undefined
+    if (req.body.productType === 'simple' && (!req.body.variants || req.body.variants.length === 0)) {
+      req.body.variants = [];
+    }
+
     const product = new Product(req.body);
     await product.save();
 
