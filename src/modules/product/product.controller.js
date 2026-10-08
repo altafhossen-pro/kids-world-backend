@@ -12,6 +12,35 @@ const sanitizeSlug = (slug) => {
   return slug.replace(/^-+|-+$/g, ''); // Remove leading and trailing hyphens
 };
 
+// Helper function to generate a unique SKU if none provided
+const generateUniqueSku = async (prefix = 'KW') => {
+  let isUnique = false;
+  let sku = '';
+  let attempts = 0;
+  let cleanPrefix = (prefix || 'KW').toUpperCase().replace(/[^A-Z0-9-]/g, '').replace(/-+$/, '');
+  if (!cleanPrefix) cleanPrefix = 'KW';
+
+  while (!isUnique && attempts < 10) {
+    attempts++;
+    const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const timePart = Date.now().toString(36).slice(-4).toUpperCase();
+    sku = `${cleanPrefix}-${randomPart}${timePart}`;
+
+    const existing = await Product.findOne({
+      $or: [
+        { 'variants.sku': sku },
+        { 'singleVariant.sku': sku }
+      ]
+    }).select('_id');
+
+    if (!existing) {
+      isUnique = true;
+    }
+  }
+
+  return sku || `${cleanPrefix}-${Date.now()}`;
+};
+
 // Helper for pagination and filtering
 const getPaginatedProducts = async (filter, req, res, message) => {
   try {
@@ -196,6 +225,27 @@ exports.createProduct = async (req, res) => {
     // If productType is 'simple', ensure variants is an empty array or undefined
     if (req.body.productType === 'simple' && (!req.body.variants || req.body.variants.length === 0)) {
       req.body.variants = [];
+    }
+
+    // Auto-generate SKU for singleVariant if empty or not provided
+    if (req.body.productType === 'simple' || (!req.body.variants || req.body.variants.length === 0)) {
+      if (!req.body.singleVariant) {
+        req.body.singleVariant = {};
+      }
+      if (!req.body.singleVariant.sku || req.body.singleVariant.sku.trim() === '') {
+        let prefix = 'KW';
+        if (req.body.category) {
+          try {
+            const catDoc = await Category.findById(req.body.category).select('skuSettings');
+            if (catDoc?.skuSettings?.prefix) {
+              prefix = catDoc.skuSettings.prefix;
+            }
+          } catch (e) {
+            // fallback to KW
+          }
+        }
+        req.body.singleVariant.sku = await generateUniqueSku(prefix);
+      }
     }
 
     const product = new Product(req.body);
@@ -1100,6 +1150,26 @@ exports.updateProduct = async (req, res) => {
       });
     }
 
+    // Auto-generate SKU for singleVariant if singleVariant is provided with empty sku
+    const currentProductType = updates.productType || originalProduct.productType;
+    if (currentProductType === 'simple' && updates.singleVariant) {
+      if (!updates.singleVariant.sku || updates.singleVariant.sku.trim() === '') {
+        const catId = updates.category || originalProduct.category;
+        let prefix = 'KW';
+        if (catId) {
+          try {
+            const catDoc = await Category.findById(catId).select('skuSettings');
+            if (catDoc?.skuSettings?.prefix) {
+              prefix = catDoc.skuSettings.prefix;
+            }
+          } catch (e) {
+            // fallback to KW
+          }
+        }
+        updates.singleVariant.sku = await generateUniqueSku(prefix);
+      }
+    }
+
     // Update the product
     const product = await Product.findByIdAndUpdate(id, updates, { new: true });
 
@@ -1525,32 +1595,36 @@ exports.getNextSkuForCategory = async (req, res) => {
     }
 
     const category = await Category.findById(categoryId);
-    if (!category || !category.skuSettings || !category.skuSettings.isActive) {
+    let searchPrefix = 'KW-';
+    let digitsLength = 5;
+
+    if (category?.skuSettings?.isActive && category?.skuSettings?.prefix) {
+      searchPrefix = category.skuSettings.prefix;
+      digitsLength = category.skuSettings.digitsLength || 5;
+    } else {
+      // If no category SKU settings, generate random unique SKU
+      const randomSku = await generateUniqueSku(category?.name ? category.name.substring(0, 3).toUpperCase().replace(/[^A-Z]/g, '') || 'KW' : 'KW');
       return sendResponse({
         res,
         statusCode: 200,
         success: true,
-        message: 'No active SKU settings for this category',
-        data: null
+        message: 'Random unique SKU generated successfully',
+        data: {
+          sku: randomSku,
+          previousMax: 0
+        }
       });
     }
 
-    const { prefix, digitsLength } = category.skuSettings;
+    // Find all products that match the prefix across all categories (both variants and singleVariant)
+    const query = {
+      $or: [
+        { 'variants.sku': { $regex: '^' + searchPrefix, $options: 'i' } },
+        { 'singleVariant.sku': { $regex: '^' + searchPrefix, $options: 'i' } }
+      ]
+    };
 
-    // Default prefix if not set
-    const searchPrefix = prefix || '';
-
-    // Find all products that match the prefix across all categories
-    const query = {};
-    if (searchPrefix) {
-      // Find products where any variant SKU starts with prefix
-      query['variants.sku'] = { $regex: '^' + searchPrefix, $options: 'i' };
-    }
-
-    // Sort by createdAt descending to find the latest added product, or by sku descending
-    // Sorting by SKU descending works if they have the same length. 
-    // Let's get all matching and find the max numerically.
-    const products = await Product.find(query).select('variants.sku');
+    const products = await Product.find(query).select('variants.sku singleVariant.sku');
 
     let maxNumber = 0;
 
@@ -1558,12 +1632,20 @@ exports.getNextSkuForCategory = async (req, res) => {
       if (product.variants && product.variants.length > 0) {
         for (const variant of product.variants) {
           if (variant.sku && variant.sku.toUpperCase().startsWith(searchPrefix.toUpperCase())) {
-            // Remove prefix to get the numeric part
             const numericPart = variant.sku.substring(searchPrefix.length);
             const num = parseInt(numericPart, 10);
             if (!isNaN(num) && num > maxNumber) {
               maxNumber = num;
             }
+          }
+        }
+      }
+      if (product.singleVariant && product.singleVariant.sku) {
+        if (product.singleVariant.sku.toUpperCase().startsWith(searchPrefix.toUpperCase())) {
+          const numericPart = product.singleVariant.sku.substring(searchPrefix.length);
+          const num = parseInt(numericPart, 10);
+          if (!isNaN(num) && num > maxNumber) {
+            maxNumber = num;
           }
         }
       }
