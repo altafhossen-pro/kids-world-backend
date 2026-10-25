@@ -937,8 +937,27 @@ exports.searchProducts = async (req, res) => {
                     }
                   }
                 },
-                // Products without variants (fallback)
-                { variants: { $size: 0 } }
+                // Simple products with singleVariant
+                {
+                  'singleVariant.currentPrice': {
+                    ...(minPrice !== null && { $gte: minPrice }),
+                    ...(maxPrice !== null && { $lte: maxPrice })
+                  }
+                },
+                // Products with priceRange
+                {
+                  'priceRange.min': {
+                    ...(minPrice !== null && { $gte: minPrice }),
+                    ...(maxPrice !== null && { $lte: maxPrice })
+                  }
+                },
+                // Products with basePrice
+                {
+                  basePrice: {
+                    ...(minPrice !== null && { $gte: minPrice }),
+                    ...(maxPrice !== null && { $lte: maxPrice })
+                  }
+                }
               ]
             }
           });

@@ -208,30 +208,24 @@ exports.createOrder = async (req, res) => {
         let actualPrice = null;
 
         // If variant SKU is provided, check variant price
+        let variant = null;
         if (item.variantSku && product.variants && product.variants.length > 0) {
-          const variant = product.variants.find(v => v.sku === item.variantSku);
-
-          if (!variant) {
-            return sendResponse({
-              res,
-              statusCode: 400,
-              success: false,
-              message: `Item ${i + 1}: Variant with SKU "${item.variantSku}" not found for product "${product.title}"`
-            });
+          variant = product.variants.find(v => v.sku === item.variantSku);
+          if (variant) {
+            if (!variant.isActive) {
+              return sendResponse({
+                res,
+                statusCode: 400,
+                success: false,
+                message: `Item ${i + 1}: Variant "${item.variantSku}" is not active`
+              });
+            }
+            actualPrice = variant.currentPrice;
           }
+        }
 
-          if (!variant.isActive) {
-            return sendResponse({
-              res,
-              statusCode: 400,
-              success: false,
-              message: `Item ${i + 1}: Variant "${item.variantSku}" is not active`
-            });
-          }
-
-          actualPrice = variant.currentPrice;
-        } else {
-          // No variant, use singleVariant price if simple, otherwise base price
+        if (!variant) {
+          // No variant or variant not found in variants list, use singleVariant price if simple, otherwise base price
           if ((product.productType === 'simple' || (product.singleVariant && product.singleVariant.currentPrice !== undefined)) && product.singleVariant) {
             actualPrice = product.singleVariant.currentPrice;
           } else {
@@ -595,11 +589,13 @@ exports.createOrder = async (req, res) => {
             previousStock = isSimpleProduct ? (productData.singleVariant?.stockQuantity || 0) : (productData.totalStock || 0);
           }
 
-          // Update main product stock or singleVariant stock
-          let updateQuery = { $inc: { totalStock: -item.quantity } };
-          if (isSimpleProduct) {
-            updateQuery = { $inc: { 'singleVariant.stockQuantity': -item.quantity } };
-          }
+          // Update main product stock and singleVariant stock
+          const updateQuery = {
+            $inc: {
+              totalStock: -item.quantity,
+              ...(isSimpleProduct && productData?.singleVariant ? { 'singleVariant.stockQuantity': -item.quantity } : {})
+            }
+          };
 
           const result = await Product.findByIdAndUpdate(
             item.product,
@@ -1390,22 +1386,27 @@ exports.updateOrder = async (req, res) => {
           let previousStock = 0;
           let newStock = 0;
 
-          // Update variant stock if variant exists
-          if (item.variant && item.variant.sku) {
-            // First, get the current product to check variant stock
-            const currentProduct = await Product.findById(item.product);
-            if (currentProduct) {
-              const variant = currentProduct.variants.find(v => v.sku === item.variant.sku);
-              if (variant) {
-                previousStock = variant.stockQuantity || 0;
-              }
+          // First, get the current product to check variant stock
+          const currentProduct = await Product.findById(item.product);
+          if (!currentProduct) continue;
+
+          const sku = item.variant?.sku || item.variantSku;
+          const isSimpleProduct = currentProduct.productType === 'simple' ||
+            (!currentProduct.variants || currentProduct.variants.length === 0) ||
+            (currentProduct.singleVariant && currentProduct.singleVariant.sku === sku);
+
+          // Update variant stock if variant exists and it is NOT a simple product
+          if (sku && !isSimpleProduct) {
+            const variant = currentProduct.variants ? currentProduct.variants.find(v => v.sku === sku) : null;
+            if (variant) {
+              previousStock = variant.stockQuantity || 0;
             }
 
             // Find variant by SKU and update stock
             const result = await Product.findOneAndUpdate(
               {
                 _id: item.product,
-                'variants.sku': item.variant.sku
+                'variants.sku': sku
               },
               {
                 $inc: { 'variants.$.stockQuantity': -item.quantity }
@@ -1415,7 +1416,7 @@ exports.updateOrder = async (req, res) => {
 
             // Manually update totalStock after variant update
             if (result) {
-              const updatedVariant = result.variants.find(v => v.sku === item.variant.sku);
+              const updatedVariant = result.variants.find(v => v.sku === sku);
               newStock = updatedVariant ? updatedVariant.stockQuantity : 0;
 
               const updatedTotalStock = result.variants.reduce((total, variant) => total + (variant.stockQuantity || 0), 0);
@@ -1429,8 +1430,8 @@ exports.updateOrder = async (req, res) => {
               const stockTracking = new StockTracking({
                 product: item.product,
                 variant: {
-                  sku: item.variant.sku,
-                  attributes: item.variant.attributes
+                  sku: sku,
+                  attributes: item.variant?.attributes || {}
                 },
                 type: 'remove',
                 quantity: -item.quantity,
@@ -1444,26 +1445,37 @@ exports.updateOrder = async (req, res) => {
               await stockTracking.save();
             }
           } else {
-            // Get product for previous stock
-            const product = await Product.findById(item.product);
-            if (product) {
-              previousStock = product.totalStock || 0;
-            }
+            // Simple product or no variant
+            previousStock = isSimpleProduct
+              ? (currentProduct.singleVariant?.stockQuantity !== undefined ? currentProduct.singleVariant.stockQuantity : (currentProduct.totalStock || 0))
+              : (currentProduct.totalStock || 0);
 
-            // Update main product stock
+            // Update main product stock and singleVariant if simple
+            const updateQuery = {
+              $inc: {
+                totalStock: -item.quantity,
+                ...(isSimpleProduct && currentProduct.singleVariant ? { 'singleVariant.stockQuantity': -item.quantity } : {})
+              }
+            };
+
             const result = await Product.findByIdAndUpdate(
               item.product,
-              { $inc: { totalStock: -item.quantity } },
+              updateQuery,
               { new: true }
             );
 
             if (result) {
-              newStock = result.totalStock || 0;
+              newStock = isSimpleProduct
+                ? (result.singleVariant?.stockQuantity !== undefined ? result.singleVariant.stockQuantity : (result.totalStock || 0))
+                : (result.totalStock || 0);
 
               // Create stock tracking record for sold items
               const stockTracking = new StockTracking({
                 product: item.product,
-                variant: null,
+                variant: sku ? {
+                  sku: sku,
+                  attributes: item.variant?.attributes || {}
+                } : null,
                 type: 'remove',
                 quantity: -item.quantity,
                 previousStock,
@@ -1943,40 +1955,40 @@ exports.updateOrderComprehensive = async (req, res) => {
       const isWasDeducted = stockDeductedStatuses.includes(oldOrder.status);
 
       for (const item of updateData.items) {
-        const product = await Product.findById(item.product);
+        const productId = item.product?._id || item.product;
+        const product = await Product.findById(productId);
         if (!product) {
           return sendResponse({
             res,
             statusCode: 400,
             success: false,
-            message: `Product not found: ${item.product}`,
+            message: `Product not found: ${productId}`,
           });
         }
 
-        const itemProductId = item.product?._id ? item.product._id.toString() : item.product?.toString();
+        const itemProductId = productId ? productId.toString() : '';
         // Find the matching item in the old order to see what was already "reserved"
-        const matchedOldItem = oldOrder.items.find(oi =>
-          oi.product?._id?.toString() === itemProductId &&
-          ((!oi.variant && !item.variant) || (oi.variant?.sku === (item.variant?.sku || item.variantSku)))
-        );
+        const matchedOldItem = oldOrder.items.find(oi => {
+          const oiProdId = (oi.product?._id || oi.product)?.toString();
+          const oiSku = oi.variant?.sku || oi.variantSku;
+          const itemSku = item.variant?.sku || item.variantSku;
+          return oiProdId === itemProductId && ((!oiSku && !itemSku) || oiSku === itemSku);
+        });
 
         const oldQuantity = matchedOldItem ? matchedOldItem.quantity : 0;
 
         // Check stock availability
         const variantSku = item.variant?.sku || item.variantSku;
-        if (item.variant && variantSku) {
-          const variant = product.variants.find(v => v.sku === variantSku);
-          if (!variant) {
-            return sendResponse({
-              res,
-              statusCode: 400,
-              success: false,
-              message: `Variant not found: ${variantSku}`,
-            });
-          }
+        const hasVariants = product.variants && product.variants.length > 0;
+        const matchedVariant = (variantSku && hasVariants)
+          ? product.variants.find(v => v.sku === variantSku)
+          : null;
 
+        const isSimpleProduct = !matchedVariant || product.productType === 'simple' || !hasVariants || (product.singleVariant && product.singleVariant.sku === variantSku);
+
+        if (matchedVariant) {
           // Total available = Current stock + (Old quantity if it was already deducted)
-          const availableStock = (variant.stockQuantity || 0) + (isWasDeducted ? oldQuantity : 0);
+          const availableStock = (matchedVariant.stockQuantity || 0) + (isWasDeducted ? oldQuantity : 0);
 
           if (availableStock < item.quantity) {
             return sendResponse({
@@ -1987,8 +1999,11 @@ exports.updateOrderComprehensive = async (req, res) => {
             });
           }
         } else {
-          // Total available = Current stock + (Old quantity if it was already deducted)
-          const availableStock = (product.totalStock || 0) + (isWasDeducted ? oldQuantity : 0);
+          // If no variant in variants array, validate against singleVariant or totalStock
+          const baseCurrentStock = isSimpleProduct
+            ? (product.singleVariant?.stockQuantity !== undefined ? product.singleVariant.stockQuantity : (product.totalStock || 0))
+            : (product.totalStock || 0);
+          const availableStock = baseCurrentStock + (isWasDeducted ? oldQuantity : 0);
 
           if (availableStock < item.quantity) {
             return sendResponse({
@@ -2167,44 +2182,56 @@ exports.updateOrderComprehensive = async (req, res) => {
       // Transition from deducted to non-deducted (pending, cancelled, returned): Add OLD items stock back
       for (const item of oldOrder.items) {
         const productId = item.product?._id || item.product;
-        if (item.variant && item.variant.sku) {
+        const prod = await Product.findById(productId);
+        if (!prod) continue;
+        const sku = item.variant?.sku || item.variantSku;
+        const isSimple = prod.productType === 'simple' || !prod.variants || prod.variants.length === 0 || (prod.singleVariant && prod.singleVariant.sku === sku);
+
+        if (sku && !isSimple) {
           const result = await Product.findOneAndUpdate(
-            { _id: productId, 'variants.sku': item.variant.sku },
+            { _id: productId, 'variants.sku': sku },
             { $inc: { 'variants.$.stockQuantity': +item.quantity } },
             { new: true }
           );
           if (result) {
             const updatedTotalStock = result.variants.reduce((total, v) => total + (v.stockQuantity || 0), 0);
-            const prod = await Product.findById(productId);
-            if (prod) {
-              prod.totalStock = updatedTotalStock;
-              await prod.save({ validateBeforeSave: false });
-            }
+            await Product.findByIdAndUpdate(productId, { totalStock: updatedTotalStock });
           }
         } else {
-          await Product.findByIdAndUpdate(productId, { $inc: { totalStock: +item.quantity } });
+          await Product.findByIdAndUpdate(productId, {
+            $inc: {
+              totalStock: +item.quantity,
+              ...(isSimple && prod.singleVariant ? { 'singleVariant.stockQuantity': +item.quantity } : {})
+            }
+          });
         }
       }
     } else if (!isOldDeducted && isNewDeducted) {
       // Transition from non-deducted to deducted: Deduct NEW items stock
       for (const item of updatedOrder.items) {
         const productId = item.product?._id || item.product;
-        if (item.variant && item.variant.sku) {
+        const prod = await Product.findById(productId);
+        if (!prod) continue;
+        const sku = item.variant?.sku || item.variantSku;
+        const isSimple = prod.productType === 'simple' || !prod.variants || prod.variants.length === 0 || (prod.singleVariant && prod.singleVariant.sku === sku);
+
+        if (sku && !isSimple) {
           const result = await Product.findOneAndUpdate(
-            { _id: productId, 'variants.sku': item.variant.sku },
+            { _id: productId, 'variants.sku': sku },
             { $inc: { 'variants.$.stockQuantity': -item.quantity } },
             { new: true }
           );
           if (result) {
             const updatedTotalStock = result.variants.reduce((total, v) => total + (v.stockQuantity || 0), 0);
-            const prod = await Product.findById(productId);
-            if (prod) {
-              prod.totalStock = updatedTotalStock;
-              await prod.save({ validateBeforeSave: false });
-            }
+            await Product.findByIdAndUpdate(productId, { totalStock: updatedTotalStock });
           }
         } else {
-          await Product.findByIdAndUpdate(productId, { $inc: { totalStock: -item.quantity } });
+          await Product.findByIdAndUpdate(productId, {
+            $inc: {
+              totalStock: -item.quantity,
+              ...(isSimple && prod.singleVariant ? { 'singleVariant.stockQuantity': -item.quantity } : {})
+            }
+          });
         }
       }
     } else if (isOldDeducted && isNewDeducted && updateData.items) {
@@ -2212,43 +2239,55 @@ exports.updateOrderComprehensive = async (req, res) => {
       // Revert Old
       for (const item of oldOrder.items) {
         const productId = item.product?._id || item.product;
-        if (item.variant && item.variant.sku) {
+        const prod = await Product.findById(productId);
+        if (!prod) continue;
+        const sku = item.variant?.sku || item.variantSku;
+        const isSimple = prod.productType === 'simple' || !prod.variants || prod.variants.length === 0 || (prod.singleVariant && prod.singleVariant.sku === sku);
+
+        if (sku && !isSimple) {
           const result = await Product.findOneAndUpdate(
-            { _id: productId, 'variants.sku': item.variant.sku },
+            { _id: productId, 'variants.sku': sku },
             { $inc: { 'variants.$.stockQuantity': +item.quantity } },
             { new: true }
           );
           if (result) {
             const updatedTotalStock = result.variants.reduce((total, v) => total + (v.stockQuantity || 0), 0);
-            const prod = await Product.findById(productId);
-            if (prod) {
-              prod.totalStock = updatedTotalStock;
-              await prod.save({ validateBeforeSave: false });
-            }
+            await Product.findByIdAndUpdate(productId, { totalStock: updatedTotalStock });
           }
         } else {
-          await Product.findByIdAndUpdate(productId, { $inc: { totalStock: +item.quantity } });
+          await Product.findByIdAndUpdate(productId, {
+            $inc: {
+              totalStock: +item.quantity,
+              ...(isSimple && prod.singleVariant ? { 'singleVariant.stockQuantity': +item.quantity } : {})
+            }
+          });
         }
       }
       // Apply New
       for (const item of updatedOrder.items) {
         const productId = item.product?._id || item.product;
-        if (item.variant && item.variant.sku) {
+        const prod = await Product.findById(productId);
+        if (!prod) continue;
+        const sku = item.variant?.sku || item.variantSku;
+        const isSimple = prod.productType === 'simple' || !prod.variants || prod.variants.length === 0 || (prod.singleVariant && prod.singleVariant.sku === sku);
+
+        if (sku && !isSimple) {
           const result = await Product.findOneAndUpdate(
-            { _id: productId, 'variants.sku': item.variant.sku },
+            { _id: productId, 'variants.sku': sku },
             { $inc: { 'variants.$.stockQuantity': -item.quantity } },
             { new: true }
           );
           if (result) {
             const updatedTotalStock = result.variants.reduce((total, v) => total + (v.stockQuantity || 0), 0);
-            const prod = await Product.findById(productId);
-            if (prod) {
-              prod.totalStock = updatedTotalStock;
-              await prod.save({ validateBeforeSave: false });
-            }
+            await Product.findByIdAndUpdate(productId, { totalStock: updatedTotalStock });
           }
         } else {
-          await Product.findByIdAndUpdate(productId, { $inc: { totalStock: -item.quantity } });
+          await Product.findByIdAndUpdate(productId, {
+            $inc: {
+              totalStock: -item.quantity,
+              ...(isSimple && prod.singleVariant ? { 'singleVariant.stockQuantity': -item.quantity } : {})
+            }
+          });
         }
       }
     }
@@ -2624,26 +2663,29 @@ exports.createGuestOrder = async (req, res) => {
       }
 
       // Check stock availability
-      if (item.variant && item.variant.sku) {
-        const variant = product.variants.find(v => v.sku === item.variant.sku);
-        if (!variant) {
+      const variantSku = item.variant?.sku || item.variantSku;
+      const hasVariants = product.variants && product.variants.length > 0;
+      const matchedVariant = (variantSku && hasVariants)
+        ? product.variants.find(v => v.sku === variantSku)
+        : null;
+
+      const isSimpleProduct = !matchedVariant || product.productType === 'simple' || !hasVariants || (product.singleVariant && product.singleVariant.sku === variantSku);
+
+      if (matchedVariant) {
+        if (matchedVariant.stockQuantity < item.quantity) {
           return sendResponse({
             res,
             statusCode: 400,
             success: false,
-            message: `Variant not found: ${item.variant.sku}`
-          });
-        }
-        if (variant.stockQuantity < item.quantity) {
-          return sendResponse({
-            res,
-            statusCode: 400,
-            success: false,
-            message: `Insufficient stock for variant ${item.variant.sku}`
+            message: `Insufficient stock for variant ${variantSku}`
           });
         }
       } else {
-        if (product.totalStock < item.quantity) {
+        const availableStock = isSimpleProduct
+          ? (product.singleVariant?.stockQuantity !== undefined ? product.singleVariant.stockQuantity : (product.totalStock || 0))
+          : (product.totalStock || 0);
+
+        if (availableStock < item.quantity) {
           return sendResponse({
             res,
             statusCode: 400,
@@ -2672,21 +2714,25 @@ exports.createGuestOrder = async (req, res) => {
       let previousStock = 0;
       let newStock = 0;
 
-      if (item.variant && item.variant.sku) {
-        // Get product to find variant and previous stock
-        const product = await Product.findById(item.product);
-        if (product) {
-          const variant = product.variants.find(v => v.sku === item.variant.sku);
-          if (variant) {
-            previousStock = variant.stockQuantity || 0;
-          }
-        }
+      const product = await Product.findById(item.product);
+      if (!product) continue;
+
+      const variantSku = item.variant?.sku || item.variantSku;
+      const hasVariants = product.variants && product.variants.length > 0;
+      const matchedVariant = (variantSku && hasVariants)
+        ? product.variants.find(v => v.sku === variantSku)
+        : null;
+
+      const isSimpleProduct = !matchedVariant || product.productType === 'simple' || !hasVariants || (product.singleVariant && product.singleVariant.sku === variantSku);
+
+      if (matchedVariant) {
+        previousStock = matchedVariant.stockQuantity || 0;
 
         // Update variant stock
         const result = await Product.findOneAndUpdate(
           {
             _id: item.product,
-            'variants.sku': item.variant.sku
+            'variants.sku': variantSku
           },
           {
             $inc: { 'variants.$.stockQuantity': -item.quantity }
@@ -2695,7 +2741,7 @@ exports.createGuestOrder = async (req, res) => {
         );
 
         if (result) {
-          const updatedVariant = result.variants.find(v => v.sku === item.variant.sku);
+          const updatedVariant = result.variants.find(v => v.sku === variantSku);
           newStock = updatedVariant ? updatedVariant.stockQuantity : 0;
 
           // Update totalStock
@@ -2706,8 +2752,8 @@ exports.createGuestOrder = async (req, res) => {
           const stockTracking = new StockTracking({
             product: item.product,
             variant: {
-              sku: item.variant.sku,
-              attributes: item.variant.attributes
+              sku: variantSku,
+              attributes: item.variant?.attributes || matchedVariant.attributes
             },
             type: 'remove',
             quantity: -item.quantity,
@@ -2721,26 +2767,37 @@ exports.createGuestOrder = async (req, res) => {
           await stockTracking.save();
         }
       } else {
-        // Get product for previous stock
-        const product = await Product.findById(item.product);
-        if (product) {
-          previousStock = product.totalStock || 0;
-        }
+        // Simple product or no variant
+        previousStock = isSimpleProduct
+          ? (product.singleVariant?.stockQuantity !== undefined ? product.singleVariant.stockQuantity : (product.totalStock || 0))
+          : (product.totalStock || 0);
 
-        // Update main product stock
+        // Update main product stock and singleVariant if simple
+        const updateQuery = {
+          $inc: {
+            totalStock: -item.quantity,
+            ...(isSimpleProduct && product.singleVariant ? { 'singleVariant.stockQuantity': -item.quantity } : {})
+          }
+        };
+
         const result = await Product.findByIdAndUpdate(
           item.product,
-          { $inc: { totalStock: -item.quantity } },
+          updateQuery,
           { new: true }
         );
 
         if (result) {
-          newStock = result.totalStock || 0;
+          newStock = isSimpleProduct
+            ? (result.singleVariant?.stockQuantity !== undefined ? result.singleVariant.stockQuantity : (result.totalStock || 0))
+            : (result.totalStock || 0);
 
           // Create stock tracking record for sold items
           const stockTracking = new StockTracking({
             product: item.product,
-            variant: null,
+            variant: item.variant?.sku ? {
+              sku: item.variant.sku,
+              attributes: item.variant.attributes || {}
+            } : null,
             type: 'remove',
             quantity: -item.quantity,
             previousStock,
@@ -3037,12 +3094,18 @@ exports.createManualOrder = async (req, res) => {
     // Update product stock if order is confirmed
     if (order.status === 'confirmed') {
       for (const item of order.items) {
-        if (item.variant && item.variant.sku) {
+        const product = await Product.findById(item.product);
+        if (!product) continue;
+
+        const sku = item.variant?.sku;
+        const isSimple = product.productType === 'simple' || !product.variants || product.variants.length === 0 || (product.singleVariant && product.singleVariant.sku === sku);
+
+        if (sku && !isSimple) {
           // Update variant stock
           const result = await Product.findOneAndUpdate(
             {
               _id: item.product,
-              'variants.sku': item.variant.sku
+              'variants.sku': sku
             },
             {
               $inc: { 'variants.$.stockQuantity': -item.quantity }
@@ -3056,10 +3119,15 @@ exports.createManualOrder = async (req, res) => {
             await Product.findByIdAndUpdate(item.product, { totalStock: updatedTotalStock });
           }
         } else {
-          // Update main product stock
+          // Update main product stock and singleVariant if simple
           await Product.findByIdAndUpdate(
             item.product,
-            { $inc: { totalStock: -item.quantity } },
+            {
+              $inc: {
+                totalStock: -item.quantity,
+                ...(isSimple && product.singleVariant ? { 'singleVariant.stockQuantity': -item.quantity } : {})
+              }
+            },
             { new: true }
           );
         }
@@ -3772,13 +3840,20 @@ exports.updateOrderByUser = async (req, res) => {
         if (product.isForceOutOfStock) return sendResponse({ res, statusCode: 400, success: false, message: `Item ${i + 1}: Product out of stock` });
 
         let actualPrice = null;
+        let variant = null;
         if (item.variantSku && product.variants && product.variants.length > 0) {
-          const variant = product.variants.find(v => v.sku === item.variantSku);
-          if (!variant) return sendResponse({ res, statusCode: 400, success: false, message: `Item ${i + 1}: Variant not found` });
-          if (!variant.isActive) return sendResponse({ res, statusCode: 400, success: false, message: `Item ${i + 1}: Variant inactive` });
-          actualPrice = variant.currentPrice;
-        } else {
-          actualPrice = product.basePrice;
+          variant = product.variants.find(v => v.sku === item.variantSku);
+          if (variant) {
+            if (!variant.isActive) return sendResponse({ res, statusCode: 400, success: false, message: `Item ${i + 1}: Variant inactive` });
+            actualPrice = variant.currentPrice;
+          }
+        }
+        if (!variant) {
+          if ((product.productType === 'simple' || (product.singleVariant && product.singleVariant.currentPrice !== undefined)) && product.singleVariant) {
+            actualPrice = product.singleVariant.currentPrice;
+          } else {
+            actualPrice = product.basePrice;
+          }
         }
         if (actualPrice === null) return sendResponse({ res, statusCode: 400, success: false, message: `Item ${i + 1}: Invalid price` });
         if (Math.abs(item.price - actualPrice) > 0.01) return sendResponse({ res, statusCode: 400, success: false, message: `Item ${i + 1}: Price mismatch` });

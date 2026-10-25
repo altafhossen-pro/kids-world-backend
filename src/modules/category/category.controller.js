@@ -25,7 +25,10 @@ exports.createCategory = async (req, res) => {
       isFeatured: isFeatured || false,
       showHomepageCategory: showHomepageCategory || false,
       showHomepageAsSection: showHomepageAsSection || false,
-      bgClass: bgClass || ''
+      bgClass: bgClass || '',
+      banner: req.body.banner,
+      categoryDiscount: req.body.categoryDiscount,
+      skuSettings: req.body.skuSettings
     });
     await category.save();
     return sendResponse({
@@ -86,16 +89,19 @@ const getPaginatedCategories = async (filter, req, res, message) => {
           parent: 1,
           isActive: 1,
           isFeatured: 1,
+          bgClass: 1,
           sortOrder: 1,
           showOnHeader: 1,
           headerSortOrder: 1,
+          showChildAsSubMenu: 1,
           showHomepageCategory: 1,
           showHomepageAsSection: 1,
           productCount: 1,
           createdAt: 1,
           updatedAt: 1,
           banner: 1,
-          categoryDiscount: 1
+          categoryDiscount: 1,
+          skuSettings: 1
         }
       },
       {
@@ -194,16 +200,19 @@ exports.getMainCategories = async (req, res) => {
           parent: 1,
           isActive: 1,
           isFeatured: 1,
+          bgClass: 1,
           sortOrder: 1,
           showOnHeader: 1,
           headerSortOrder: 1,
+          showChildAsSubMenu: 1,
           showHomepageCategory: 1,
           showHomepageAsSection: 1,
           productCount: 1,
           createdAt: 1,
           updatedAt: 1,
           banner: 1,
-          categoryDiscount: 1
+          categoryDiscount: 1,
+          skuSettings: 1
         }
       },
       {
@@ -270,16 +279,19 @@ exports.getPaginatedMainCategories = async (req, res) => {
           parent: 1,
           isActive: 1,
           isFeatured: 1,
+          bgClass: 1,
           sortOrder: 1,
           showOnHeader: 1,
           headerSortOrder: 1,
+          showChildAsSubMenu: 1,
           showHomepageCategory: 1,
           showHomepageAsSection: 1,
           productCount: 1,
           createdAt: 1,
           updatedAt: 1,
           banner: 1,
-          categoryDiscount: 1
+          categoryDiscount: 1,
+          skuSettings: 1
         }
       },
       {
@@ -376,16 +388,19 @@ exports.getHomepageCategories = async (req, res) => {
           parent: 1,
           isActive: 1,
           isFeatured: 1,
+          bgClass: 1,
           sortOrder: 1,
           showOnHeader: 1,
           headerSortOrder: 1,
+          showChildAsSubMenu: 1,
           showHomepageCategory: 1,
           showHomepageAsSection: 1,
           productCount: 1,
           createdAt: 1,
           updatedAt: 1,
           banner: 1,
-          categoryDiscount: 1
+          categoryDiscount: 1,
+          skuSettings: 1
         }
       },
       {
@@ -454,11 +469,15 @@ exports.getFeaturedCategories = async (req, res) => {
           sortOrder: 1,
           showOnHeader: 1,
           headerSortOrder: 1,
+          showChildAsSubMenu: 1,
+          showHomepageCategory: 1,
+          showHomepageAsSection: 1,
           productCount: 1,
           createdAt: 1,
           updatedAt: 1,
           banner: 1,
-          categoryDiscount: 1
+          categoryDiscount: 1,
+          skuSettings: 1
         }
       },
       {
@@ -526,11 +545,15 @@ exports.getCategoryById = async (req, res) => {
           sortOrder: 1,
           showOnHeader: 1,
           headerSortOrder: 1,
+          showChildAsSubMenu: 1,
+          showHomepageCategory: 1,
+          showHomepageAsSection: 1,
           productCount: 1,
           createdAt: 1,
           updatedAt: 1,
           banner: 1,
-          categoryDiscount: 1
+          categoryDiscount: 1,
+          skuSettings: 1
         }
       }
     ]);
@@ -821,11 +844,15 @@ exports.getCategoryBySlug = async (req, res) => {
           sortOrder: 1,
           showOnHeader: 1,
           headerSortOrder: 1,
+          showChildAsSubMenu: 1,
+          showHomepageCategory: 1,
+          showHomepageAsSection: 1,
           productCount: 1,
           createdAt: 1,
           updatedAt: 1,
           banner: 1,
-          categoryDiscount: 1
+          categoryDiscount: 1,
+          skuSettings: 1
         }
       }
     ]);
