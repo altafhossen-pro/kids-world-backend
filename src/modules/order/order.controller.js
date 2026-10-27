@@ -713,8 +713,8 @@ exports.createOrder = async (req, res) => {
           total: order.total,
           shippingCost: order.shippingCost || 0,
           itemsCount: order.items.length,
-          customerName: order.user ? (order.user.name || 'User') : (order.guestInfo?.name || 'Guest'),
-          phone: order.user ? order.user.phone : (order.shippingAddress?.phone || order.guestInfo?.phone || ''),
+          customerName: order.shippingAddress?.name || req.user?.name || (order.user && typeof order.user === 'object' ? order.user.name : null) || order.guestInfo?.name || 'Customer',
+          phone: order.shippingAddress?.phone || req.user?.phone || req.user?.phoneNumber || order.guestInfo?.phone || '',
           status: order.status,
           createdAt: order.createdAt
         });
@@ -726,11 +726,13 @@ exports.createOrder = async (req, res) => {
     // Trigger Telegram Notification
     try {
       const isGuest = order.isGuestOrder;
-      const customerName = order.user ? (order.user.name || 'User') : (order.guestInfo?.name || 'Guest');
+      const customerName = order.shippingAddress?.name || req.user?.name || (order.user && typeof order.user === 'object' ? order.user.name : null) || order.guestInfo?.name || 'Customer';
+      const customerPhone = order.shippingAddress?.phone || req.user?.phone || req.user?.phoneNumber || order.guestInfo?.phone || '';
       const payload = {
         orderId: order.orderId,
         totalAmount: order.total,
         customerName: customerName,
+        phone: customerPhone,
         items: order.items ? order.items.map(item => ({
           productTitle: item.name || 'Product',
           quantity: item.quantity
@@ -2886,20 +2888,42 @@ exports.createGuestOrder = async (req, res) => {
     try {
       const io = socketConfig.getIo();
       if (io) {
+        const guestCustomerName = order.shippingAddress?.name || order.guestInfo?.name || 'Guest';
+        const guestCustomerPhone = order.shippingAddress?.phone || order.guestInfo?.phone || '';
         io.emit('new-order', {
           _id: order._id,
           orderId: order.orderId,
           total: order.total,
           shippingCost: order.shippingCost || 0,
           itemsCount: order.items.length,
-          customerName: order.guestInfo?.name || 'Guest',
-          phone: order.guestInfo?.phone || order.shippingAddress?.phone || '',
+          customerName: guestCustomerName,
+          phone: guestCustomerPhone,
           status: order.status,
           createdAt: order.createdAt
         });
       }
     } catch (socketErr) {
       console.error('Socket notification error:', socketErr);
+    }
+
+    // Trigger Telegram Notification for guest order
+    try {
+      const guestCustomerName = order.shippingAddress?.name || order.guestInfo?.name || 'Guest';
+      const guestCustomerPhone = order.shippingAddress?.phone || order.guestInfo?.phone || '';
+      const payload = {
+        orderId: order.orderId,
+        totalAmount: order.total,
+        customerName: guestCustomerName,
+        phone: guestCustomerPhone,
+        items: order.items ? order.items.map(item => ({
+          productTitle: item.name || 'Product',
+          quantity: item.quantity
+        })) : []
+      };
+
+      sendTelegramNotification('NEW_ORDER_GUEST', payload).catch(err => console.error(err));
+    } catch (telegramErr) {
+      console.error('Telegram notification error for guest order:', telegramErr);
     }
 
     return sendResponse({

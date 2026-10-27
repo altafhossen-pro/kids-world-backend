@@ -53,4 +53,8 @@ router.post('/telegram/test', verifyToken, verifyTokenAdmin, settingsController.
 // Global Product Subtitle endpoints
 router.patch('/global-subtitle', verifyToken, verifyTokenAdmin, settingsController.updateGlobalProductSubtitle);
 
+// Floating Support endpoints
+router.get('/support', settingsController.getSupportSettings);
+router.put('/support', verifyToken, verifyTokenAdmin, settingsController.updateSupportSettings);
+
 module.exports = router;

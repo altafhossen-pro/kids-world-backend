@@ -14,6 +14,7 @@ const categorySchema = new mongoose.Schema({
   showChildAsSubMenu: { type: Boolean, default: false },
   showHomepageCategory: { type: Boolean, default: false },
   showHomepageAsSection: { type: Boolean, default: false },
+  homepageSectionOrder: { type: Number, default: 0 },
   banner: {
     url: { type: String, default: '' },
     isActive: { type: Boolean, default: false }

@@ -869,3 +869,119 @@ exports.updateGlobalProductSubtitle = async (req, res) => {
   }
 };
 
+// Get Floating Support Settings
+exports.getSupportSettings = async (req, res) => {
+  try {
+    let settings = await Settings.findOne();
+    if (!settings) {
+      settings = new Settings();
+      await settings.save();
+    }
+
+    const defaultSupport = {
+      isEnabled: true,
+      call: {
+        isEnabled: true,
+        phoneNumber: '+8801519181818',
+        label: 'Call Us'
+      },
+      whatsapp: {
+        isEnabled: true,
+        phoneNumber: '+8801519181818',
+        message: 'Hello! I need help with my order.'
+      },
+      messenger: {
+        isEnabled: true,
+        url: 'https://m.me/kidsworldbd'
+      }
+    };
+
+    const existingSupport = settings.floatingSupport 
+      ? (typeof settings.floatingSupport.toObject === 'function' ? settings.floatingSupport.toObject() : settings.floatingSupport)
+      : {};
+
+    const supportSettings = {
+      isEnabled: existingSupport.isEnabled !== undefined ? existingSupport.isEnabled : defaultSupport.isEnabled,
+      call: {
+        ...defaultSupport.call,
+        ...(existingSupport.call || {})
+      },
+      whatsapp: {
+        ...defaultSupport.whatsapp,
+        ...(existingSupport.whatsapp || {})
+      },
+      messenger: {
+        ...defaultSupport.messenger,
+        ...(existingSupport.messenger || {})
+      }
+    };
+
+    return sendResponse({
+      res,
+      statusCode: 200,
+      success: true,
+      message: 'Support settings retrieved successfully',
+      data: supportSettings
+    });
+  } catch (error) {
+    return sendResponse({
+      res,
+      statusCode: 500,
+      success: false,
+      message: error.message || 'Server error'
+    });
+  }
+};
+
+// Update Floating Support Settings
+exports.updateSupportSettings = async (req, res) => {
+  try {
+    const supportData = req.body;
+    let settings = await Settings.findOne();
+    if (!settings) {
+      settings = new Settings();
+    }
+
+    if (!settings.floatingSupport) {
+      settings.floatingSupport = {};
+    }
+
+    settings.floatingSupport = {
+      isEnabled: supportData.isEnabled !== undefined ? Boolean(supportData.isEnabled) : true,
+      call: {
+        isEnabled: supportData.call?.isEnabled !== undefined ? Boolean(supportData.call.isEnabled) : true,
+        phoneNumber: supportData.call?.phoneNumber || '',
+        label: supportData.call?.label || 'Call Us'
+      },
+      whatsapp: {
+        isEnabled: supportData.whatsapp?.isEnabled !== undefined ? Boolean(supportData.whatsapp.isEnabled) : true,
+        phoneNumber: supportData.whatsapp?.phoneNumber || '',
+        message: supportData.whatsapp?.message || ''
+      },
+      messenger: {
+        isEnabled: supportData.messenger?.isEnabled !== undefined ? Boolean(supportData.messenger.isEnabled) : true,
+        url: supportData.messenger?.url || ''
+      }
+    };
+
+    settings.updatedBy = req.user._id;
+    await settings.save();
+
+    return sendResponse({
+      res,
+      statusCode: 200,
+      success: true,
+      message: 'Support settings updated successfully',
+      data: settings.floatingSupport
+    });
+  } catch (error) {
+    return sendResponse({
+      res,
+      statusCode: 500,
+      success: false,
+      message: error.message || 'Server error'
+    });
+  }
+};
+
+

@@ -25,6 +25,7 @@ exports.createCategory = async (req, res) => {
       isFeatured: isFeatured || false,
       showHomepageCategory: showHomepageCategory || false,
       showHomepageAsSection: showHomepageAsSection || false,
+      homepageSectionOrder: req.body.homepageSectionOrder || 0,
       bgClass: bgClass || '',
       banner: req.body.banner,
       categoryDiscount: req.body.categoryDiscount,
@@ -96,6 +97,7 @@ const getPaginatedCategories = async (filter, req, res, message) => {
           showChildAsSubMenu: 1,
           showHomepageCategory: 1,
           showHomepageAsSection: 1,
+          homepageSectionOrder: 1,
           productCount: 1,
           createdAt: 1,
           updatedAt: 1,
@@ -207,6 +209,7 @@ exports.getMainCategories = async (req, res) => {
           showChildAsSubMenu: 1,
           showHomepageCategory: 1,
           showHomepageAsSection: 1,
+          homepageSectionOrder: 1,
           productCount: 1,
           createdAt: 1,
           updatedAt: 1,
@@ -395,6 +398,7 @@ exports.getHomepageCategories = async (req, res) => {
           showChildAsSubMenu: 1,
           showHomepageCategory: 1,
           showHomepageAsSection: 1,
+          homepageSectionOrder: 1,
           productCount: 1,
           createdAt: 1,
           updatedAt: 1,
@@ -472,6 +476,7 @@ exports.getFeaturedCategories = async (req, res) => {
           showChildAsSubMenu: 1,
           showHomepageCategory: 1,
           showHomepageAsSection: 1,
+          homepageSectionOrder: 1,
           productCount: 1,
           createdAt: 1,
           updatedAt: 1,
@@ -548,6 +553,7 @@ exports.getCategoryById = async (req, res) => {
           showChildAsSubMenu: 1,
           showHomepageCategory: 1,
           showHomepageAsSection: 1,
+          homepageSectionOrder: 1,
           productCount: 1,
           createdAt: 1,
           updatedAt: 1,
@@ -611,6 +617,9 @@ exports.updateCategory = async (req, res) => {
     }
     if (updates.showHomepageAsSection !== undefined) {
       updates.showHomepageAsSection = Boolean(updates.showHomepageAsSection);
+    }
+    if (updates.homepageSectionOrder !== undefined) {
+      updates.homepageSectionOrder = Number(updates.homepageSectionOrder) || 0;
     }
 
     const category = await Category.findByIdAndUpdate(id, updates, { new: true }).populate('parent').populate('children');
@@ -810,6 +819,87 @@ exports.reorderCategories = async (req, res) => {
   }
 };
 
+exports.reorderHomepageSections = async (req, res) => {
+  try {
+    const { items } = req.body;
+    if (!Array.isArray(items)) {
+      return sendResponse({
+        res,
+        statusCode: 400,
+        success: false,
+        message: 'Invalid data format. Expected an array of items.',
+      });
+    }
+
+    const bulkOps = items.map((cat, index) => {
+      const updateData = {
+        homepageSectionOrder: typeof cat.homepageSectionOrder === 'number' ? cat.homepageSectionOrder : index
+      };
+      if (cat.showHomepageAsSection !== undefined) {
+        updateData.showHomepageAsSection = Boolean(cat.showHomepageAsSection);
+      }
+      return {
+        updateOne: {
+          filter: { _id: cat.id || cat._id },
+          update: { $set: updateData }
+        }
+      };
+    });
+
+    if (bulkOps.length > 0) {
+      await Category.bulkWrite(bulkOps);
+    }
+
+    return sendResponse({
+      res,
+      statusCode: 200,
+      success: true,
+      message: 'Homepage category sections reordered successfully',
+    });
+  } catch (error) {
+    return sendResponse({
+      res,
+      statusCode: 500,
+      success: false,
+      message: error.message || 'Server error',
+    });
+  }
+};
+
+exports.toggleHomepageSection = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { showHomepageAsSection } = req.body;
+    const category = await Category.findById(id);
+    if (!category) {
+      return sendResponse({
+        res,
+        statusCode: 404,
+        success: false,
+        message: 'Category not found',
+      });
+    }
+
+    category.showHomepageAsSection = showHomepageAsSection !== undefined ? Boolean(showHomepageAsSection) : !category.showHomepageAsSection;
+    await category.save();
+
+    return sendResponse({
+      res,
+      statusCode: 200,
+      success: true,
+      message: `Category section ${category.showHomepageAsSection ? 'enabled' : 'disabled'} for homepage`,
+      data: category,
+    });
+  } catch (error) {
+    return sendResponse({
+      res,
+      statusCode: 500,
+      success: false,
+      message: error.message || 'Server error',
+    });
+  }
+};
+
 exports.getCategoryBySlug = async (req, res) => {
   try {
     const { slug } = req.params;
@@ -847,6 +937,7 @@ exports.getCategoryBySlug = async (req, res) => {
           showChildAsSubMenu: 1,
           showHomepageCategory: 1,
           showHomepageAsSection: 1,
+          homepageSectionOrder: 1,
           productCount: 1,
           createdAt: 1,
           updatedAt: 1,

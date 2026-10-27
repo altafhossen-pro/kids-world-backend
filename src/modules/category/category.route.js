@@ -13,6 +13,8 @@ router.get('/header', categoryController.getHeaderCategories);
 router.get('/slug/:slug', categoryController.getCategoryBySlug);
 router.get('/:id', categoryController.getCategoryById);
 router.put('/reorder', categoryController.reorderCategories);
+router.put('/reorder-homepage-sections', categoryController.reorderHomepageSections);
+router.patch('/:id/toggle-homepage-section', categoryController.toggleHomepageSection);
 router.put('/:id', categoryController.updateCategory);
 router.delete('/:id', categoryController.deleteCategory);
 

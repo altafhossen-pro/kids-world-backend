@@ -73,6 +73,9 @@ router.use('/deal-of-the-day', dealOfTheDayRoutes);
 router.use('/top-brands', topBrandRoutes);
 router.use('/dashboard', dashboardRoutes);
 
+const metaPixelRoutes = require('../modules/metaPixel/metaPixel.route');
+router.use('/meta-pixel', metaPixelRoutes);
+
 // Health check route
 router.get('/health', (req, res) => {
   res.status(200).json({

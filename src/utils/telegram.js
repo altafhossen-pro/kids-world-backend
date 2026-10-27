@@ -24,7 +24,8 @@ exports.sendTelegramNotification = async (messageType, payload) => {
         message = `🛍️ <b>New Order (Existing User)</b>
 <b>Invoice:</b> #${payload.orderId || payload.invoice}
 <b>Total Amount:</b> ৳${payload.totalAmount}
-<b>Customer Name:</b> ${payload.customerName}
+<b>Customer Name:</b> ${payload.customerName || 'Customer'}
+<b>Phone:</b> ${payload.phone || 'N/A'}
 <b>Items:</b>
 ${payload.items ? payload.items.map(item => `- ${item.productTitle} (x${item.quantity})`).join('\n') : 'N/A'}`;
         break;
@@ -34,7 +35,8 @@ ${payload.items ? payload.items.map(item => `- ${item.productTitle} (x${item.qua
         message = `🛍️ <b>New Order (Guest User)</b>
 <b>Invoice:</b> #${payload.orderId || payload.invoice}
 <b>Total Amount:</b> ৳${payload.totalAmount}
-<b>Customer Name:</b> ${payload.customerName}
+<b>Customer Name:</b> ${payload.customerName || 'Guest'}
+<b>Phone:</b> ${payload.phone || 'N/A'}
 <b>Items:</b>
 ${payload.items ? payload.items.map(item => `- ${item.productTitle} (x${item.quantity})`).join('\n') : 'N/A'}`;
         break;

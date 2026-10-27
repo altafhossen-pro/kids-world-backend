@@ -299,6 +299,25 @@ const settingsSchema = new mongoose.Schema({
     }]
   },
 
+  // Floating Support Settings (Call, WhatsApp, Messenger)
+  floatingSupport: {
+    isEnabled: { type: Boolean, default: true },
+    call: {
+      isEnabled: { type: Boolean, default: true },
+      phoneNumber: { type: String, default: '+8801519181818' },
+      label: { type: String, default: 'Call Us' }
+    },
+    whatsapp: {
+      isEnabled: { type: Boolean, default: true },
+      phoneNumber: { type: String, default: '+8801519181818' },
+      message: { type: String, default: 'Hello! I need help with my order.' }
+    },
+    messenger: {
+      isEnabled: { type: Boolean, default: true },
+      url: { type: String, default: 'https://m.me/kidsworldbd' }
+    }
+  },
+
   // Order Source Colors for Dashboard Table Highlight
   orderSourceColors: {
     website: { type: String, default: '' },
