@@ -15,6 +15,7 @@ const { Affiliate } = require('../affiliate/affiliate.model');
 const { clearProductCache } = require('../../utils/cache');
 const { AffiliateTracking } = require('../affiliate/affiliateTracking.model');
 const steadfastService = require('../steadfast/steadfast.service');
+const { logSteadfastError } = require('../steadfast/steadfast.logger');
 const mongoose = require('mongoose');
 const socketConfig = require('../../socket');
 const { sendTelegramNotification } = require('../../utils/telegram');
@@ -3815,6 +3816,7 @@ exports.addOrderToSteadfast = async (req, res) => {
     });
   } catch (error) {
     console.error('Error adding order to Steadfast:', error);
+    await logSteadfastError('Add Order To Steadfast Endpoint', error, { orderId: req.params.id });
     return sendResponse({
       res,
       statusCode: 500,

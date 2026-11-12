@@ -22,7 +22,7 @@ const steadfastTrackingSchema = new mongoose.Schema(
     },
     tracking_message: {
       type: String,
-      required: true,
+      default: '',
     },
     cod_amount: {
       type: Number,

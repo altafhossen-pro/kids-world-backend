@@ -1,5 +1,6 @@
 const axios = require('axios');
 const Settings = require('../settings/settings.model');
+const { logSteadfastError } = require('./steadfast.logger');
 
 const BASE_URL = 'https://portal.packzy.com/api/v1';
 
@@ -52,6 +53,7 @@ const createOrder = async (orderData) => {
         };
     } catch (error) {
         console.error('Steadfast API Error:', error.response?.data || error.message);
+        await logSteadfastError('Create Order', error, { invoice: orderData?.invoice, phone: orderData?.recipient_phone });
         
         // If it's a credentials error, pass the friendly message through
         let errorMessage = error.message;
@@ -237,6 +239,69 @@ const getBalance = async () => {
         };
     } catch (error) {
         console.error('Steadfast Balance API Error:', error.response?.data || error.message);
+        await logSteadfastError('Get Balance', error);
+        return {
+            success: false,
+            error: error.response?.data || { message: error.message },
+            statusCode: error.response?.status || 500
+        };
+    }
+};
+
+/**
+ * Ping Steadfast API service to check availability
+ */
+const ping = async () => {
+    try {
+        const response = await axios.get(`${BASE_URL}/ping`, { timeout: 8000 });
+        return {
+            success: true,
+            data: response.data
+        };
+    } catch (error) {
+        await logSteadfastError('Ping Service', error);
+        return {
+            success: false,
+            error: error.response?.data || { message: error.message },
+            statusCode: error.response?.status || 500
+        };
+    }
+};
+
+/**
+ * Check customer fraud and delivery score by phone number
+ * @param {string} phone - 11 digit Bangladeshi phone number
+ */
+const checkFraudScore = async (phone) => {
+    try {
+        const credentials = await getSteadfastCredentials();
+        
+        // Clean phone number (strip whitespace, +88 or 88 prefix)
+        let cleanedPhone = String(phone).replace(/\s+/g, '').replace(/[-()]/g, '');
+        if (cleanedPhone.startsWith('+880')) {
+            cleanedPhone = '0' + cleanedPhone.slice(4);
+        } else if (cleanedPhone.startsWith('880')) {
+            cleanedPhone = '0' + cleanedPhone.slice(3);
+        }
+
+        const response = await axios.get(
+            `${BASE_URL}/fraud_check/score/${cleanedPhone}`,
+            {
+                headers: {
+                    'Api-Key': credentials.apiKey,
+                    'Secret-Key': credentials.apiSecret,
+                    'Content-Type': 'application/json'
+                },
+                timeout: 10000
+            }
+        );
+
+        return {
+            success: true,
+            data: response.data
+        };
+    } catch (error) {
+        await logSteadfastError('Fraud Check', error, { phone });
         return {
             success: false,
             error: error.response?.data || { message: error.message },
@@ -252,6 +317,8 @@ module.exports = {
     getStatusByInvoice,
     getStatusByTrackingCode,
     getBalance,
+    checkFraudScore,
+    ping,
     getSteadfastCredentials
 };
 

@@ -158,6 +158,10 @@ const settingsSchema = new mongoose.Schema({
     webhookToken: {
       type: String,
       default: ''
+    },
+    notifyTelegramOnError: {
+      type: Boolean,
+      default: true
     }
   },
 
