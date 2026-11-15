@@ -198,6 +198,10 @@ const settingsSchema = new mongoose.Schema({
     notifyPasswordChange: {
       type: Boolean,
       default: false
+    },
+    notifyPiprapayPaid: {
+      type: Boolean,
+      default: true
     }
   },
 

@@ -230,6 +230,57 @@ class PiprapayService {
 
     await order.save();
 
+    // Trigger Telegram notification for successful online payment
+    try {
+      const { sendTelegramNotification } = require('../../utils/telegram');
+      const isGuest = Boolean(order.isGuestOrder || !order.user);
+
+      let customerName = order.shippingAddress?.name || order.guestInfo?.name || order.manualOrderInfo?.name;
+      let customerPhone = order.shippingAddress?.phone || order.guestInfo?.phone || order.manualOrderInfo?.phone;
+      let customerEmail = order.guestInfo?.email || order.shippingAddress?.email || order.manualOrderInfo?.email;
+
+      if (!customerName && order.user) {
+        try {
+          const { User } = require('../user/user.model');
+          const u = await User.findById(order.user).select('name phone email').lean();
+          if (u) {
+            customerName = customerName || u.name;
+            customerPhone = customerPhone || u.phone;
+            customerEmail = customerEmail || u.email;
+          }
+        } catch (uErr) {
+          // Ignore
+        }
+      }
+
+      const telegramPayload = {
+        orderId: order.orderId,
+        orderNumber: order.orderId,
+        isGuest,
+        customerName: customerName || (isGuest ? 'Guest Customer' : 'Registered Customer'),
+        phone: customerPhone || 'N/A',
+        email: customerEmail || '',
+        amount: Number(paymentData.amount) || order.total,
+        orderTotal: order.total,
+        currency: paymentData.currency || 'BDT',
+        paymentMethod: paymentData.payment_method || 'PipraPay Online',
+        ppId: ppId || 'N/A',
+        transactionId: ppId || 'N/A',
+        paidAt: new Date().toLocaleString('en-US', { timeZone: 'Asia/Dhaka' }),
+        items: order.items ? order.items.map(item => ({
+          productTitle: item.name || 'Product',
+          quantity: item.quantity,
+          price: item.price,
+        })) : [],
+      };
+
+      sendTelegramNotification('PIPRAPAY_PAYMENT_SUCCESS', telegramPayload).catch(err => {
+        console.error('Failed to send Telegram notification for PipraPay success:', err.message);
+      });
+    } catch (telegramErr) {
+      console.error('Telegram notification trigger error:', telegramErr.message);
+    }
+
     // Emit live update to admin panel
     try {
       if (socketConfig && typeof socketConfig.getIo === 'function') {

@@ -54,6 +54,24 @@ ${payload.items ? payload.items.map(item => `- ${item.productTitle} (x${item.qua
         message = `🔒 <b>User Password Changed / Reset</b>
 <b>Contact:</b> ${payload.identifier || 'Unknown'}`;
         break;
+
+      case 'PIPRAPAY_PAYMENT_SUCCESS':
+        shouldSend = settings.telegramSettings.notifyPiprapayPaid !== false;
+        const userTypeBadge = payload.isGuest ? '👤 Guest Customer' : '👤 Registered User';
+        message = `💰 <b>Online Payment Received (PipraPay)</b>
+━━━━━━━━━━━━━━━━━━━━
+<b>Invoice:</b> #${payload.orderId || payload.orderNumber}
+<b>Payment Status:</b> ✅ Paid
+<b>Amount Paid:</b> ৳${payload.amount || payload.totalAmount} ${payload.currency || 'BDT'}
+<b>Gateway / Method:</b> ${payload.paymentMethod || 'PipraPay'}
+<b>Transaction ID:</b> <code>${payload.ppId || payload.transactionId || 'N/A'}</code>
+━━━━━━━━━━━━━━━━━━━━
+<b>Customer:</b> ${payload.customerName || 'Customer'} (${userTypeBadge})
+<b>Phone:</b> ${payload.phone || 'N/A'}
+${payload.email ? `<b>Email:</b> ${payload.email}\n` : ''}<b>Order Total:</b> ৳${payload.orderTotal || payload.totalAmount}
+<b>Date:</b> ${payload.paidAt || new Date().toLocaleString('en-US', { timeZone: 'Asia/Dhaka' })}
+${payload.items && payload.items.length ? `\n<b>Items (${payload.items.length}):</b>\n${payload.items.map(item => `• ${item.productTitle || item.name || 'Product'} (x${item.quantity})`).join('\n')}` : ''}`;
+        break;
         
       default:
         return;
