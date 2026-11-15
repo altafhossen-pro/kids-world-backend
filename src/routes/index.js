@@ -76,6 +76,12 @@ router.use('/dashboard', dashboardRoutes);
 const metaPixelRoutes = require('../modules/metaPixel/metaPixel.route');
 router.use('/meta-pixel', metaPixelRoutes);
 
+const visitorRoutes = require('../modules/visitor/visitor.route');
+router.use('/visitor', visitorRoutes);
+
+const piprapayRoutes = require('../modules/payment/piprapay.route');
+router.use('/payment/piprapay', piprapayRoutes);
+
 // Health check route
 router.get('/health', (req, res) => {
   res.status(200).json({

@@ -112,11 +112,15 @@ const handleVisitorTracking = async (io, socket) => {
 };
 
 const { handleOrderPresence } = require('./modules/order/order.socket');
+const { handleVisitorSocket } = require('./modules/visitor/visitor.socket');
 
 const setupSocketHandlers = (io) => {
     io.on('connection', (socket) => {
         // Initialize visitor tracking for this connection
         handleVisitorTracking(io, socket);
+        
+        // Initialize detailed real-time visitor footprint & live shopper monitor
+        handleVisitorSocket(io, socket);
         
         // Initialize order presence tracking
         handleOrderPresence(io, socket);

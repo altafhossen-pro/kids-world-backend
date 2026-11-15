@@ -4,8 +4,7 @@ const steadfastTrackingSchema = new mongoose.Schema(
   {
     notification_type: {
       type: String,
-      required: true,
-      enum: ['delivery_status', 'tracking_update', 'return_status'],
+      default: 'delivery_status',
     },
     consignment_id: {
       type: Number,
@@ -18,7 +17,6 @@ const steadfastTrackingSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      // Status provided in delivery_status webhook (e.g. pending, delivered, etc)
     },
     tracking_message: {
       type: String,
@@ -29,6 +27,16 @@ const steadfastTrackingSchema = new mongoose.Schema(
     },
     delivery_charge: {
       type: Number,
+    },
+    cod_charge: {
+      type: Number,
+    },
+    net_amount: {
+      type: Number,
+    },
+    source: {
+      type: String,
+      default: 'webhook',
     },
     updated_at_steadfast: {
       type: Date,

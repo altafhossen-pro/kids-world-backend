@@ -57,4 +57,11 @@ router.patch('/global-subtitle', verifyToken, verifyTokenAdmin, settingsControll
 router.get('/support', settingsController.getSupportSettings);
 router.put('/support', verifyToken, verifyTokenAdmin, settingsController.updateSupportSettings);
 
+// PipraPay settings endpoints
+router.get('/piprapay', verifyToken, verifyTokenAdmin, settingsController.getPiprapaySettings);
+router.put('/piprapay', verifyToken, verifyTokenAdmin, settingsController.updatePiprapaySettings);
+
+// Public Payment settings for checkout
+router.get('/public-payment-settings', settingsController.getPublicPaymentSettings);
+
 module.exports = router;

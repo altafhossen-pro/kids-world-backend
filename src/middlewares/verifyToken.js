@@ -30,12 +30,12 @@ const verifyToken = async (req, res, next) => {
         // Extract token
         const token = authHeader.substring(7); // Remove "Bearer " prefix
 
-        if (!token) {
+        if (!token || token === 'undefined' || token === 'null') {
             return sendResponse({
                 res,
                 statusCode: 401,
                 success: false,
-                message: 'Access token is required'
+                message: 'Access token is required. Please login again'
             });
         }
         

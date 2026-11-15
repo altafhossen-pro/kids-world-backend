@@ -310,12 +310,48 @@ const checkFraudScore = async (phone) => {
     }
 };
 
+/**
+ * Get full audit tracking trail by invoice
+ * @param {String} invoice - Order invoice number
+ */
+const getTrackingByInvoice = async (invoice) => {
+    try {
+        if (!invoice) return { success: false, message: 'Invoice is required' };
+        const credentials = await getSteadfastCredentials();
+
+        const response = await axios.get(
+            `${BASE_URL}/trackings_by_invoice/${encodeURIComponent(invoice)}`,
+            {
+                headers: {
+                    'Api-Key': credentials.apiKey,
+                    'Secret-Key': credentials.apiSecret,
+                    'Content-Type': 'application/json'
+                },
+                timeout: 10000
+            }
+        );
+
+        return {
+            success: true,
+            data: response.data
+        };
+    } catch (error) {
+        console.error('Steadfast Live Trackings Error:', error.response?.data || error.message);
+        return {
+            success: false,
+            error: error.response?.data || { message: error.message },
+            statusCode: error.response?.status || 500
+        };
+    }
+};
+
 module.exports = {
     createOrder,
     createBulkOrders,
     getStatusByConsignmentId,
     getStatusByInvoice,
     getStatusByTrackingCode,
+    getTrackingByInvoice,
     getBalance,
     checkFraudScore,
     ping,

@@ -389,42 +389,57 @@ exports.getAdminProducts = async (req, res) => {
     const statusFilter = req.query.status || req.query.filterStatus; // Support both 'status' and 'filterStatus'
 
     // Build base filter (admin sees all products, including inactive)
-    const queryFilter = {};
+    const andConditions = [];
 
     const filterType = req.query.filterType;
     if (filterType) {
-      if (filterType === 'trending') queryFilter.isTrending = true;
-      if (filterType === 'bestselling') queryFilter.isBestselling = true;
-      if (filterType === 'featured') queryFilter.isFeatured = true;
-      if (filterType === 'new_arrival') queryFilter.isNewArrival = true;
+      if (filterType === 'trending') andConditions.push({ isTrending: true });
+      if (filterType === 'bestselling') andConditions.push({ isBestselling: true });
+      if (filterType === 'featured') andConditions.push({ isFeatured: true });
+      if (filterType === 'new_arrival') andConditions.push({ isNewArrival: true });
     }
 
     // Status filter (if not 'all')
     if (statusFilter && statusFilter !== 'all') {
       if (statusFilter === 'low_stock') {
-        const settings = await Settings.findOne();
-        const lowStockThreshold = settings?.siteSettings?.lowStockThreshold ?? 10;
-        queryFilter.$or = [
-          { totalStock: { $lte: lowStockThreshold } },
-          { 'variants.stockQuantity': { $lte: lowStockThreshold } }
-        ];
+        let lowStockThreshold = 0;
+        if (req.query.threshold !== undefined && req.query.threshold !== '') {
+          const parsed = parseInt(req.query.threshold, 10);
+          if (!isNaN(parsed)) lowStockThreshold = parsed;
+        }
+
+        const stockMode = req.query.stockMode || 'any'; // 'any' or 'total'
+
+        if (stockMode === 'total') {
+          andConditions.push({ totalStock: { $lte: lowStockThreshold } });
+        } else {
+          andConditions.push({
+            $or: [
+              { totalStock: { $lte: lowStockThreshold } },
+              { 'singleVariant.stockQuantity': { $lte: lowStockThreshold } },
+              { 'variants.stockQuantity': { $lte: lowStockThreshold } }
+            ]
+          });
+        }
       } else {
-        queryFilter.status = statusFilter;
+        andConditions.push({ status: statusFilter });
       }
     }
 
     // Search functionality - includes SKU, title, slug, brand
     if (searchQuery) {
-      queryFilter.$or = [
-        { title: { $regex: searchQuery, $options: 'i' } },
-        { slug: { $regex: searchQuery, $options: 'i' } },
-        { shortDescription: { $regex: searchQuery, $options: 'i' } },
-        { description: { $regex: searchQuery, $options: 'i' } },
-        { tags: { $in: [new RegExp(searchQuery, 'i')] } },
-        { brand: { $regex: searchQuery, $options: 'i' } },
-        { 'variants.sku': { $regex: searchQuery, $options: 'i' } },
-        { 'singleVariant.sku': { $regex: searchQuery, $options: 'i' } }
-      ];
+      andConditions.push({
+        $or: [
+          { title: { $regex: searchQuery, $options: 'i' } },
+          { slug: { $regex: searchQuery, $options: 'i' } },
+          { shortDescription: { $regex: searchQuery, $options: 'i' } },
+          { description: { $regex: searchQuery, $options: 'i' } },
+          { tags: { $in: [new RegExp(searchQuery, 'i')] } },
+          { brand: { $regex: searchQuery, $options: 'i' } },
+          { 'variants.sku': { $regex: searchQuery, $options: 'i' } },
+          { 'singleVariant.sku': { $regex: searchQuery, $options: 'i' } }
+        ]
+      });
     }
 
     if (req.query.category) {
@@ -442,8 +457,10 @@ exports.getAdminProducts = async (req, res) => {
         ...childCategories.map(child => child._id.toString())
       ];
 
-      queryFilter.category = { $in: allCategoryIds };
+      andConditions.push({ category: { $in: allCategoryIds } });
     }
+
+    const queryFilter = andConditions.length > 0 ? { $and: andConditions } : {};
 
     const total = await Product.countDocuments(queryFilter);
     const products = await Product.find(queryFilter)
@@ -454,13 +471,22 @@ exports.getAdminProducts = async (req, res) => {
 
     let processedProducts = products;
     if (statusFilter === 'low_stock') {
-      const settings = await Settings.findOne();
-      const lowStockThreshold = settings?.siteSettings?.lowStockThreshold ?? 10;
+      let lowStockThreshold = 0;
+      if (req.query.threshold !== undefined && req.query.threshold !== '') {
+        const parsed = parseInt(req.query.threshold, 10);
+        if (!isNaN(parsed)) lowStockThreshold = parsed;
+      }
 
       processedProducts = products.map(doc => {
         const product = doc.toObject({ virtuals: true });
         if (product.variants && product.variants.length > 0) {
-          product.variants = product.variants.filter(v => v.stockQuantity <= lowStockThreshold);
+          product.variants = product.variants.map(v => ({
+            ...v,
+            isLowStock: (v.stockQuantity ?? 0) <= lowStockThreshold
+          }));
+          product.lowStockVariantsCount = product.variants.filter(v => (v.stockQuantity ?? 0) <= lowStockThreshold).length;
+        } else if (product.singleVariant) {
+          product.isLowStock = (product.singleVariant.stockQuantity ?? product.totalStock ?? 0) <= lowStockThreshold;
         }
         return product;
       });

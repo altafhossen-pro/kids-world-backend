@@ -12,6 +12,10 @@ class JWTService {
         this.refreshExpiry = '1825d'; // 5 years
     }
 
+    getSecret() {
+        return process.env.JWT_SECRET || this.secret || 'your-secret-key';
+    }
+
     /**
      * Generate JWT token
      * @param {Object} payload - Token payload (usually contains userId)
@@ -20,7 +24,7 @@ class JWTService {
      */
     generateToken(payload, expiresIn = this.defaultExpiry) {
         try {
-            return jwt.sign(payload, this.secret, { expiresIn });
+            return jwt.sign(payload, this.getSecret(), { expiresIn });
         } catch (error) {
             console.error('JWT Generation Error:', error);
             throw new Error('Failed to generate token');
@@ -64,8 +68,16 @@ class JWTService {
      */
     verifyToken(token) {
         try {
-            return jwt.verify(token, this.secret);
+            return jwt.verify(token, this.getSecret());
         } catch (error) {
+            // Backward compatibility fallback: verify against fallback secret if primary fails
+            if (error.name === 'JsonWebTokenError' && this.getSecret() !== 'your-secret-key') {
+                try {
+                    return jwt.verify(token, 'your-secret-key');
+                } catch (fallbackErr) {
+                    // Ignore fallback error and throw original
+                }
+            }
             // Preserve original error name and message for proper error handling
             if (error.name === 'TokenExpiredError' || error.name === 'JsonWebTokenError' || error.name === 'NotBeforeError') {
                 // Re-throw original error to preserve error.name

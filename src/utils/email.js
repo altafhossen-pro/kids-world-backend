@@ -199,7 +199,8 @@ const sendOrderConfirmationEmail = async (order, user) => {
       'bkash': 'bKash',
       'nagad': 'Nagad',
       'rocket': 'Rocket',
-      'bank': 'Bank Transfer'
+      'bank': 'Bank Transfer',
+      'bank_transfer': 'Bank Transfer'
     }[order.paymentMethod] || order.paymentMethod || 'N/A';
 
     // Status display

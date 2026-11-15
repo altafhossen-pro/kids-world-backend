@@ -1,10 +1,10 @@
-const app = require('./src/app');
 const dotenv = require('dotenv');
+dotenv.config();
+
+const app = require('./src/app');
 const http = require('http');
 const socketConfig = require('./src/socket');
 const { setupSocketHandlers } = require('./src/socket.handlers');
-
-dotenv.config();
 
 const PORT = process.env.PORT || 5000;
 

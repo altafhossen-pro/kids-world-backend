@@ -984,4 +984,110 @@ exports.updateSupportSettings = async (req, res) => {
   }
 };
 
+// Get PipraPay settings (Admin only)
+exports.getPiprapaySettings = async (req, res) => {
+  try {
+    let settings = await Settings.findOne();
+    if (!settings) {
+      settings = new Settings();
+      await settings.save();
+    }
+
+    const defaultPiprapay = {
+      isEnabled: false,
+      showOnCheckout: false,
+      displayName: 'Online Payment (bKash / Nagad / Rocket / Cards)',
+      baseUrl: 'https://piprapay.com/api',
+      apiKey: ''
+    };
+
+    const piprapaySettings = settings.piprapaySettings || defaultPiprapay;
+
+    return sendResponse({
+      res,
+      statusCode: 200,
+      success: true,
+      message: 'PipraPay settings retrieved successfully',
+      data: piprapaySettings
+    });
+  } catch (error) {
+    return sendResponse({
+      res,
+      statusCode: 500,
+      success: false,
+      message: error.message || 'Server error'
+    });
+  }
+};
+
+// Update PipraPay settings (Admin only)
+exports.updatePiprapaySettings = async (req, res) => {
+  try {
+    const piprapayData = req.body;
+    let settings = await Settings.findOne();
+
+    if (!settings) {
+      settings = new Settings();
+    }
+
+    if (!settings.piprapaySettings) {
+      settings.piprapaySettings = {};
+    }
+
+    if (piprapayData.isEnabled !== undefined) settings.piprapaySettings.isEnabled = Boolean(piprapayData.isEnabled);
+    if (piprapayData.showOnCheckout !== undefined) settings.piprapaySettings.showOnCheckout = Boolean(piprapayData.showOnCheckout);
+    if (piprapayData.displayName !== undefined) settings.piprapaySettings.displayName = String(piprapayData.displayName).trim();
+    if (piprapayData.baseUrl !== undefined) settings.piprapaySettings.baseUrl = String(piprapayData.baseUrl).trim();
+    if (piprapayData.apiKey !== undefined) settings.piprapaySettings.apiKey = String(piprapayData.apiKey).trim();
+
+    settings.updatedBy = req.user._id;
+    await settings.save();
+
+    return sendResponse({
+      res,
+      statusCode: 200,
+      success: true,
+      message: 'PipraPay settings updated successfully',
+      data: settings.piprapaySettings
+    });
+  } catch (error) {
+    return sendResponse({
+      res,
+      statusCode: 500,
+      success: false,
+      message: error.message || 'Server error'
+    });
+  }
+};
+
+// Get public payment settings (Public for Checkout)
+exports.getPublicPaymentSettings = async (req, res) => {
+  try {
+    const settings = await Settings.findOne().select('piprapaySettings');
+    const piprapay = settings?.piprapaySettings || {};
+
+    return sendResponse({
+      res,
+      statusCode: 200,
+      success: true,
+      message: 'Payment settings retrieved successfully',
+      data: {
+        piprapay: {
+          isEnabled: Boolean(piprapay.isEnabled),
+          showOnCheckout: Boolean(piprapay.showOnCheckout),
+          displayName: piprapay.displayName || 'Online Payment (bKash / Nagad / Rocket / Cards)'
+        }
+      }
+    });
+  } catch (error) {
+    return sendResponse({
+      res,
+      statusCode: 500,
+      success: false,
+      message: error.message || 'Server error'
+    });
+  }
+};
+
+
 

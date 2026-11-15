@@ -201,6 +201,30 @@ const settingsSchema = new mongoose.Schema({
     }
   },
 
+  // PipraPay Payment Gateway Settings
+  piprapaySettings: {
+    isEnabled: {
+      type: Boolean,
+      default: false
+    },
+    showOnCheckout: {
+      type: Boolean,
+      default: false
+    },
+    displayName: {
+      type: String,
+      default: 'Online Payment (bKash / Nagad / Rocket / Cards)'
+    },
+    baseUrl: {
+      type: String,
+      default: 'https://piprapay.com/api'
+    },
+    apiKey: {
+      type: String,
+      default: ''
+    }
+  },
+
   // Admin who last updated
   updatedBy: {
     type: mongoose.Schema.Types.ObjectId,

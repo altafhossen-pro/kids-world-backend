@@ -750,12 +750,64 @@ exports.createOrder = async (req, res) => {
     // Clear product cache to reflect new stock immediately
     clearProductCache();
 
+    let paymentUrl = null;
+    if (order.paymentMethod === 'piprapay') {
+      try {
+        const piprapayService = require('../payment/piprapay.service');
+        const chargeRes = await piprapayService.createCharge(order);
+        if (chargeRes && chargeRes.success && chargeRes.pp_url) {
+          paymentUrl = chargeRes.pp_url;
+        } else {
+          // If PipraPay charge initiation fails, do not place the order in pending state!
+          await Order.findByIdAndDelete(order._id);
+          return sendResponse({
+            res,
+            statusCode: 400,
+            success: false,
+            message: chargeRes?.message || 'Failed to initiate PipraPay payment session. Please check gateway settings or try again.',
+          });
+        }
+      } catch (payErr) {
+        console.error('PipraPay charge initiation error in createOrder:', payErr);
+        await Order.findByIdAndDelete(order._id);
+        return sendResponse({
+          res,
+          statusCode: 400,
+          success: false,
+          message: payErr.message || 'Payment gateway connection error',
+        });
+      }
+    }
+
+    try {
+      const visitorPhone = order.customer?.phone || order.deliveryAddress?.phone || req.body?.customerPhone || req.body?.mobileNumber;
+      const visitorIdHeader = req.headers['x-visitor-id'] || req.body?.visitorId;
+      if (visitorPhone || visitorIdHeader) {
+        const { VisitorSession } = require('../visitor/visitor.model');
+        const visitorService = require('../visitor/visitor.service');
+        if (visitorIdHeader) {
+          visitorService.markOrderPlaced(visitorIdHeader, order.orderId, order.total).catch(() => {});
+        } else if (visitorPhone) {
+          VisitorSession.find({ customerPhone: visitorPhone }).select('visitorId').then(sessions => {
+            for (const s of sessions) {
+              if (s.visitorId) visitorService.markOrderPlaced(s.visitorId, order.orderId, order.total).catch(() => {});
+            }
+          }).catch(() => {});
+        }
+      }
+    } catch (vErr) {}
+
+    const orderResponseData = order.toObject ? order.toObject() : { ...order };
+    if (paymentUrl) {
+      orderResponseData.paymentUrl = paymentUrl;
+    }
+
     return sendResponse({
       res,
       statusCode: 201,
       success: true,
       message: 'Order created successfully',
-      data: order,
+      data: orderResponseData,
     });
   } catch (error) {
     console.error('Order creation error:', error);
@@ -2927,12 +2979,64 @@ exports.createGuestOrder = async (req, res) => {
       console.error('Telegram notification error for guest order:', telegramErr);
     }
 
+    let paymentUrl = null;
+    if (populatedOrder.paymentMethod === 'piprapay') {
+      try {
+        const piprapayService = require('../payment/piprapay.service');
+        const chargeRes = await piprapayService.createCharge(populatedOrder);
+        if (chargeRes && chargeRes.success && chargeRes.pp_url) {
+          paymentUrl = chargeRes.pp_url;
+        } else {
+          // If PipraPay charge initiation fails, do not place the order in pending state!
+          await Order.findByIdAndDelete(populatedOrder._id);
+          return sendResponse({
+            res,
+            statusCode: 400,
+            success: false,
+            message: chargeRes?.message || 'Failed to initiate PipraPay payment session. Please check gateway settings or try again.',
+          });
+        }
+      } catch (payErr) {
+        console.error('PipraPay charge initiation error in createGuestOrder:', payErr);
+        await Order.findByIdAndDelete(populatedOrder._id);
+        return sendResponse({
+          res,
+          statusCode: 400,
+          success: false,
+          message: payErr.message || 'Payment gateway connection error',
+        });
+      }
+    }
+
+    try {
+      const visitorPhone = populatedOrder.guestInfo?.phone || populatedOrder.deliveryAddress?.phone || req.body?.guestInfo?.phone;
+      const visitorIdHeader = req.headers['x-visitor-id'] || req.body?.visitorId;
+      if (visitorPhone || visitorIdHeader) {
+        const { VisitorSession } = require('../visitor/visitor.model');
+        const visitorService = require('../visitor/visitor.service');
+        if (visitorIdHeader) {
+          visitorService.markOrderPlaced(visitorIdHeader, populatedOrder.orderId, populatedOrder.total).catch(() => {});
+        } else if (visitorPhone) {
+          VisitorSession.find({ customerPhone: visitorPhone }).select('visitorId').then(sessions => {
+            for (const s of sessions) {
+              if (s.visitorId) visitorService.markOrderPlaced(s.visitorId, populatedOrder.orderId, populatedOrder.total).catch(() => {});
+            }
+          }).catch(() => {});
+        }
+      }
+    } catch (vErr) {}
+
+    const guestOrderResponseData = populatedOrder.toObject ? populatedOrder.toObject() : { ...populatedOrder };
+    if (paymentUrl) {
+      guestOrderResponseData.paymentUrl = paymentUrl;
+    }
+
     return sendResponse({
       res,
       statusCode: 201,
       success: true,
       message: 'Guest order created successfully',
-      data: populatedOrder,
+      data: guestOrderResponseData,
     });
   } catch (error) {
     return sendResponse({
@@ -2987,6 +3091,30 @@ exports.createManualOrder = async (req, res) => {
       }
     }
 
+    const initialAddress = (
+      deliveryAddress ||
+      guestInfo?.address ||
+      req.body.shippingAddress?.street ||
+      req.body.shippingAddress?.address ||
+      req.body.address ||
+      ''
+    ).trim();
+
+    const initialName = (
+      guestInfo?.name ||
+      req.body.shippingAddress?.name ||
+      req.body.name ||
+      'Valued Customer'
+    ).trim();
+
+    const initialPhone = (
+      targetPhone ||
+      guestInfo?.phone ||
+      req.body.shippingAddress?.phone ||
+      req.body.phone ||
+      ''
+    ).trim();
+
     // Prepare order data
     const orderData = {
       orderType: 'manual',
@@ -2995,14 +3123,26 @@ exports.createManualOrder = async (req, res) => {
       discount: discount || 0,
       shippingCost: shippingCost || 0,
       shippingAddress: {
-        name: guestInfo?.name || '',
-        phone: targetPhone || '',
+        name: initialName,
+        phone: initialPhone,
         label: 'Manual Order',
-        street: deliveryAddress || '',
-        city: '',
-        state: '',
-        postalCode: '',
-        country: 'Bangladesh'
+        street: initialAddress,
+        address: initialAddress,
+        city: req.body.shippingAddress?.city || '',
+        state: req.body.shippingAddress?.state || '',
+        postalCode: req.body.shippingAddress?.postalCode || '',
+        country: req.body.shippingAddress?.country || 'Bangladesh'
+      },
+      billingAddress: {
+        name: initialName,
+        phone: initialPhone,
+        label: 'Manual Order',
+        street: initialAddress,
+        address: initialAddress,
+        city: req.body.shippingAddress?.city || '',
+        state: req.body.shippingAddress?.state || '',
+        postalCode: req.body.shippingAddress?.postalCode || '',
+        country: req.body.shippingAddress?.country || 'Bangladesh'
       },
       status: status || 'confirmed',
       orderNotes: notes || '',
@@ -3084,25 +3224,68 @@ exports.createManualOrder = async (req, res) => {
         };
       }
     } else if (orderType === 'guest' && guestInfo) {
+      const finalAddress = (
+        deliveryAddress ||
+        guestInfo.address ||
+        req.body.shippingAddress?.street ||
+        req.body.shippingAddress?.address ||
+        req.body.address ||
+        initialAddress ||
+        ''
+      ).trim();
+
+      const finalName = (
+        guestInfo.name ||
+        req.body.shippingAddress?.name ||
+        req.body.name ||
+        initialName ||
+        'Valued Customer'
+      ).trim();
+
+      const finalPhone = (
+        guestInfo.phone ||
+        targetPhone ||
+        req.body.shippingAddress?.phone ||
+        req.body.phone ||
+        initialPhone ||
+        ''
+      ).trim();
+
       // For guest orders, store guest info in manualOrderInfo for easy search
       orderData.manualOrderInfo = {
-        name: guestInfo.name || '',
-        phone: guestInfo.phone || '',
-        address: guestInfo.address || '',
+        name: finalName,
+        phone: finalPhone,
+        address: finalAddress,
         email: guestInfo.email || ''
       };
 
-      // For guest orders, we'll store guest info in shipping address
+      // For guest orders, store guest info in shipping address
       orderData.shippingAddress = {
+        name: finalName,
+        phone: finalPhone,
         label: 'Guest Order',
-        street: guestInfo.address || '',
-        city: '',
-        state: '',
-        postalCode: '',
-        country: 'Bangladesh'
+        street: finalAddress,
+        address: finalAddress,
+        city: req.body.shippingAddress?.city || '',
+        state: req.body.shippingAddress?.state || '',
+        postalCode: req.body.shippingAddress?.postalCode || '',
+        country: req.body.shippingAddress?.country || 'Bangladesh'
       };
+
+      orderData.billingAddress = {
+        name: finalName,
+        phone: finalPhone,
+        label: 'Guest Order',
+        street: finalAddress,
+        address: finalAddress,
+        city: req.body.shippingAddress?.city || '',
+        state: req.body.shippingAddress?.state || '',
+        postalCode: req.body.shippingAddress?.postalCode || '',
+        country: req.body.shippingAddress?.country || 'Bangladesh'
+      };
+
       // Store guest info in admin notes as well (backward compatibility)
-      orderData.adminNotes = `Guest Order - Name: ${guestInfo.name}, Phone: ${guestInfo.phone}, Email: ${guestInfo.email || 'N/A'}`;
+      orderData.adminNotes = `Guest Order - Name: ${finalName}, Phone: ${finalPhone}, Email: ${guestInfo.email || 'N/A'}, Address: ${finalAddress || 'N/A'}`;
     } else {
       return sendResponse({
         res,
@@ -3227,6 +3410,22 @@ exports.createManualOrder = async (req, res) => {
     } catch (socketErr) {
       console.error('Socket notification error:', socketErr);
     }
+
+    try {
+      const vId = req.body?.visitorId || req.headers['x-visitor-id'];
+      const vPhone = populatedOrder.guestInfo?.phone || populatedOrder.deliveryAddress?.phone || req.body?.guestInfo?.phone;
+      const visitorService = require('../visitor/visitor.service');
+      if (vId) {
+        visitorService.markOrderPlaced(vId, populatedOrder.orderId, populatedOrder.total).catch(() => {});
+      } else if (vPhone) {
+        const { VisitorSession } = require('../visitor/visitor.model');
+        VisitorSession.find({ customerPhone: vPhone }).select('visitorId').then(sessions => {
+          for (const s of sessions) {
+            if (s.visitorId) visitorService.markOrderPlaced(s.visitorId, populatedOrder.orderId, populatedOrder.total).catch(() => {});
+          }
+        }).catch(() => {});
+      }
+    } catch (vErr) {}
 
     return sendResponse({
       res,

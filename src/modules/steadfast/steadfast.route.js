@@ -19,6 +19,9 @@ router.get('/fraud-check/:phone', verifyToken, verifyTokenAdmin, steadfastContro
 // Get tracking history (Admin only)
 router.get('/tracking/:invoice', verifyToken, verifyTokenAdmin, steadfastController.getTrackingHistory);
 
+// Get live step-by-step courier tracking & financial settlement (Admin only)
+router.get('/live-tracking/:invoice', verifyToken, verifyTokenAdmin, steadfastController.getLiveTracking);
+
 // Steadfast Error Logs endpoints (Admin only)
 router.get('/logs', verifyToken, verifyTokenAdmin, steadfastController.getLogs);
 router.put('/logs', verifyToken, verifyTokenAdmin, steadfastController.updateLogs);

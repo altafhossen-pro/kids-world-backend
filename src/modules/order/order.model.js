@@ -75,7 +75,7 @@ const orderSchema = new mongoose.Schema({
         enum: ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'returned'],
         default: 'pending',
     },
-    paymentMethod: { type: String }, // e.g., 'cod', 'card', 'bkash', etc.
+    paymentMethod: { type: String }, // e.g., 'cod', 'card', 'bkash', 'nagad', 'rocket', 'bank_transfer', etc.
     paymentStatus: {
         type: String,
         enum: ['pending', 'paid', 'failed', 'refunded'],
@@ -157,7 +157,23 @@ const orderSchema = new mongoose.Schema({
     steadfastConsignmentId: { type: String },
     steadfastTrackingCode: { type: String },
     steadfastCollectedAmount: { type: Number, default: 0 },
-    isReadByAdmin: { type: Boolean, default: false }
+    steadfastDeliveryCharge: { type: Number, default: 0 },
+    steadfastCodCharge: { type: Number, default: 0 },
+    steadfastReceivableAmount: { type: Number, default: 0 },
+    steadfastDeliveryStatus: { type: String },
+    steadfastUpdatedAt: { type: Date },
+    steadfastLastTrackingMessage: { type: String },
+    tracking: { type: Array, default: [] },
+    isReadByAdmin: { type: Boolean, default: false },
+    // PipraPay Payment Details
+    piprapayDetails: {
+        ppId: { type: String, index: true },
+        amount: { type: Number },
+        currency: { type: String, default: 'BDT' },
+        paymentMethod: { type: String },
+        paidAt: { type: Date },
+        rawResponse: { type: mongoose.Schema.Types.Mixed }
+    }
 }, {
     timestamps: true,
 });
