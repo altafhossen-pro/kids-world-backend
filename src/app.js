@@ -10,6 +10,9 @@ const routes = require('./routes/index');
 dotenv.config();
 const app = express();
 
+// Enable trust proxy for Nginx / Cloudflare reverse proxy to get real client IP
+app.set('trust proxy', true);
+
 // Connect to MongoDB
 connectDB();
 

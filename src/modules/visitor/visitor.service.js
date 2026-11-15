@@ -41,6 +41,51 @@ function parseUserAgent(ua = '') {
     return { device, browser, os };
 }
 
+function cleanIp(ip) {
+    if (!ip) return '127.0.0.1';
+    let s = String(ip).trim();
+    if (s.startsWith('::ffff:')) {
+        s = s.substring(7);
+    }
+    if (s === '::1') return '127.0.0.1';
+    return s;
+}
+
+function isLocalIp(ip) {
+    if (!ip) return true;
+    const cleaned = cleanIp(ip);
+    return cleaned === '127.0.0.1' || cleaned === '::1' || cleaned === 'localhost';
+}
+
+function extractClientIp(req = null, explicitIp = null) {
+    if (explicitIp && !isLocalIp(explicitIp)) {
+        return cleanIp(explicitIp);
+    }
+
+    if (req) {
+        const headers = req.headers || {};
+        const candidate = headers['cf-connecting-ip'] ||
+                          headers['true-client-ip'] ||
+                          headers['x-real-ip'] ||
+                          headers['x-forwarded-for'] ||
+                          headers['x-client-ip'];
+        if (candidate) {
+            const firstIp = String(candidate).split(',')[0].trim();
+            if (firstIp && !isLocalIp(firstIp)) {
+                return cleanIp(firstIp);
+            }
+        }
+        if (req.ip && !isLocalIp(req.ip)) {
+            return cleanIp(req.ip);
+        }
+        if (req.socket?.remoteAddress && !isLocalIp(req.socket.remoteAddress)) {
+            return cleanIp(req.socket.remoteAddress);
+        }
+    }
+
+    return cleanIp(explicitIp || '127.0.0.1');
+}
+
 class VisitorService {
     /**
      * Set Socket.io instance
@@ -105,7 +150,15 @@ class VisitorService {
             }
         }
 
-        return activeList.sort((a, b) => b.lastSeenTimestamp - a.lastSeenTimestamp);
+        return activeList.sort((a, b) => {
+            const serialA = Number(a.dailySerial || 0);
+            const serialB = Number(b.dailySerial || 0);
+            if (serialB !== serialA) return serialB - serialA;
+            const timeA = a.firstSeenAt ? new Date(a.firstSeenAt).getTime() : 0;
+            const timeB = b.firstSeenAt ? new Date(b.firstSeenAt).getTime() : 0;
+            if (timeB !== timeA) return timeB - timeA;
+            return String(b.visitorId || '').localeCompare(String(a.visitorId || ''));
+        });
     }
 
     /**
@@ -120,7 +173,7 @@ class VisitorService {
             const now = new Date();
             const nowMs = now.getTime();
 
-            const ip = payload.ip || req?.headers['x-forwarded-for']?.split(',')[0]?.trim() || req?.socket?.remoteAddress || '127.0.0.1';
+            const ip = extractClientIp(req, payload.ip);
             const userAgent = payload.userAgent || req?.headers['user-agent'] || '';
             const { device, browser, os } = parseUserAgent(userAgent);
 
@@ -237,6 +290,9 @@ class VisitorService {
                 session.lastUrl = url;
                 session.lastTitle = title;
                 session.lastSeenAt = now;
+                if (isLocalIp(session.ip) && !isLocalIp(ip)) {
+                    session.ip = ip;
+                }
                 if (hasCart) {
                     session.hasCart = true;
                     session.cartItems = cartItems;
@@ -302,11 +358,12 @@ class VisitorService {
 
             // Update in-memory live shoppers map
             const existingMemory = liveShoppers.get(visitorId) || {};
+            const resolvedIp = !isLocalIp(ip) ? ip : (!isLocalIp(existingMemory.ip) ? existingMemory.ip : (session.ip || ip));
             liveShoppers.set(visitorId, {
                 visitorId,
                 dailySerial: session.dailySerial,
                 sessionId: session._id,
-                ip,
+                ip: resolvedIp,
                 device,
                 browser,
                 os,
@@ -350,7 +407,43 @@ class VisitorService {
             const nowMs = now.getTime();
             const today = getDhakaDateString();
 
-            const mem = liveShoppers.get(visitorId);
+            let mem = liveShoppers.get(visitorId);
+            if (!mem) {
+                const session = await VisitorSession.findOne({ visitorId, sessionDate: today });
+                if (session) {
+                    mem = {
+                        visitorId,
+                        dailySerial: session.dailySerial,
+                        sessionId: session._id,
+                        ip: session.ip || '127.0.0.1',
+                        device: session.device,
+                        browser: session.browser,
+                        os: session.os,
+                        url: payload.url || session.lastUrl,
+                        title: payload.title || session.lastTitle,
+                        entryUrl: session.entryUrl,
+                        firstSeenAt: session.firstSeenAt,
+                        lastSeenTimestamp: nowMs,
+                        durationSeconds: session.durationSeconds,
+                        hasCart: session.hasCart,
+                        cartItems: session.cartItems || [],
+                        cartTotal: session.cartTotal || 0,
+                        visitedCheckout: session.visitedCheckout,
+                        customerName: session.customerName,
+                        customerPhone: session.customerPhone,
+                        customerAddress: session.customerAddress,
+                        customerNotes: session.customerNotes,
+                        checkoutInfoHistory: session.checkoutInfoHistory || [],
+                        deliveryCharge: session.deliveryCharge || 0,
+                        pageViewsCount: session.pageViewsCount,
+                        isReturning: session.isReturning,
+                        isOrderPlaced: session.isOrderPlaced || false,
+                        placedOrderId: session.placedOrderId || null,
+                        placedOrderAmount: session.placedOrderAmount || 0
+                    };
+                    liveShoppers.set(visitorId, mem);
+                }
+            }
             if (mem) {
                 mem.lastSeenTimestamp = nowMs;
                 if (payload.url) mem.url = payload.url;

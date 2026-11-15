@@ -2,6 +2,44 @@ const visitorService = require('./visitor.service');
 
 const disconnectTimeouts = new Map();
 
+function cleanIp(ip) {
+    if (!ip) return '127.0.0.1';
+    let s = String(ip).trim();
+    if (s.startsWith('::ffff:')) {
+        s = s.substring(7);
+    }
+    if (s === '::1') return '127.0.0.1';
+    return s;
+}
+
+function isLocalIp(ip) {
+    if (!ip) return true;
+    const cleaned = cleanIp(ip);
+    return cleaned === '127.0.0.1' || cleaned === '::1' || cleaned === 'localhost';
+}
+
+function getClientIpFromSocket(socket) {
+    if (!socket) return '127.0.0.1';
+    const headers = socket.handshake?.headers || {};
+    
+    // Check proxy headers in order of priority (Cloudflare, Nginx X-Real-IP, X-Forwarded-For)
+    const candidate = headers['cf-connecting-ip'] ||
+                      headers['true-client-ip'] ||
+                      headers['x-real-ip'] ||
+                      headers['x-forwarded-for'] ||
+                      headers['x-client-ip'];
+
+    if (candidate) {
+        const firstIp = String(candidate).split(',')[0].trim();
+        if (firstIp && !isLocalIp(firstIp)) {
+            return cleanIp(firstIp);
+        }
+    }
+
+    const raw = socket.handshake?.address || socket.conn?.remoteAddress || '127.0.0.1';
+    return cleanIp(raw);
+}
+
 function handleVisitorSocket(io, socket) {
     if (typeof visitorService.setIo === 'function') {
         visitorService.setIo(io);
@@ -57,7 +95,7 @@ function handleVisitorSocket(io, socket) {
             const session = await visitorService.recordActivity({
                 ...payload,
                 visitorId: vid,
-                ip: socket.handshake.address || socket.conn?.remoteAddress || '127.0.0.1',
+                ip: getClientIpFromSocket(socket),
                 userAgent: socket.handshake.headers['user-agent'] || ''
             });
 
