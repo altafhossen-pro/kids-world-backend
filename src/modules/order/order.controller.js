@@ -85,6 +85,54 @@ exports.createOrder = async (req, res) => {
       });
     }
 
+    // Validate recipient name and phone
+    const recipientName = String(orderData.shippingAddress?.name || req.user?.name || '').trim();
+    if (!recipientName) {
+      return sendResponse({
+        res,
+        statusCode: 400,
+        success: false,
+        message: 'Recipient name is required'
+      });
+    }
+
+    if (/(.)\1{2,}/iu.test(recipientName)) {
+      return sendResponse({
+        res,
+        statusCode: 400,
+        success: false,
+        message: 'আপনার অর্ডারটি এই মুহূর্তে নেওয়া যাচ্ছে না, দয়া করে আমাদের সাপোর্টে যোগাযোগ করুন।'
+      });
+    }
+
+    let recipientPhone = String(orderData.shippingAddress?.phone || req.user?.phone || req.user?.phoneNumber || '').trim();
+    if (recipientPhone.startsWith('+880')) {
+      recipientPhone = recipientPhone.substring(3);
+    } else if (recipientPhone.startsWith('+88')) {
+      recipientPhone = recipientPhone.substring(3);
+    }
+    recipientPhone = recipientPhone.replace(/\D/g, '');
+    if (recipientPhone.startsWith('880') && recipientPhone.length > 11) {
+      recipientPhone = recipientPhone.substring(2);
+    }
+    if (recipientPhone.length > 11) {
+      recipientPhone = recipientPhone.slice(0, 11);
+    }
+
+    if (!recipientPhone.startsWith('01') || recipientPhone.length !== 11) {
+      return sendResponse({
+        res,
+        statusCode: 400,
+        success: false,
+        message: 'Invalid mobile number. Must be 11 digits starting with 01.'
+      });
+    }
+
+    if (orderData.shippingAddress) {
+      orderData.shippingAddress.name = recipientName;
+      orderData.shippingAddress.phone = recipientPhone;
+    }
+
     // Validate order items and product IDs
     if (!orderData.items || !Array.isArray(orderData.items) || orderData.items.length === 0) {
       return sendResponse({
@@ -2629,6 +2677,58 @@ exports.createGuestOrder = async (req, res) => {
         success: false,
         message: blockRecord.responseMsg || 'Your IP address or phone number has been blocked from placing orders.'
       });
+    }
+
+    // Validate guest / customer name and phone
+    const guestCustomerName = String(orderData.shippingAddress?.name || orderData.guestInfo?.name || '').trim();
+    if (!guestCustomerName) {
+      return sendResponse({
+        res,
+        statusCode: 400,
+        success: false,
+        message: 'Customer name is required'
+      });
+    }
+
+    if (/(.)\1{2,}/iu.test(guestCustomerName)) {
+      return sendResponse({
+        res,
+        statusCode: 400,
+        success: false,
+        message: 'আপনার অর্ডারটি এই মুহূর্তে নেওয়া যাচ্ছে না, দয়া করে আমাদের সাপোর্টে যোগাযোগ করুন।'
+      });
+    }
+
+    let guestCustomerPhone = String(orderData.shippingAddress?.phone || orderData.guestInfo?.phone || '').trim();
+    if (guestCustomerPhone.startsWith('+880')) {
+      guestCustomerPhone = guestCustomerPhone.substring(3);
+    } else if (guestCustomerPhone.startsWith('+88')) {
+      guestCustomerPhone = guestCustomerPhone.substring(3);
+    }
+    guestCustomerPhone = guestCustomerPhone.replace(/\D/g, '');
+    if (guestCustomerPhone.startsWith('880') && guestCustomerPhone.length > 11) {
+      guestCustomerPhone = guestCustomerPhone.substring(2);
+    }
+    if (guestCustomerPhone.length > 11) {
+      guestCustomerPhone = guestCustomerPhone.slice(0, 11);
+    }
+
+    if (!guestCustomerPhone.startsWith('01') || guestCustomerPhone.length !== 11) {
+      return sendResponse({
+        res,
+        statusCode: 400,
+        success: false,
+        message: 'Invalid mobile number. Must be 11 digits starting with 01.'
+      });
+    }
+
+    if (orderData.shippingAddress) {
+      orderData.shippingAddress.name = guestCustomerName;
+      orderData.shippingAddress.phone = guestCustomerPhone;
+    }
+    if (orderData.guestInfo) {
+      orderData.guestInfo.name = guestCustomerName;
+      orderData.guestInfo.phone = guestCustomerPhone;
     }
 
     // Validate address IDs if provided
